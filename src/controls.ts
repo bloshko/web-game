@@ -7,6 +7,7 @@ import {
   Camera,
   Group,
   AnimationAction,
+  PointLight,
 } from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
@@ -29,6 +30,7 @@ export class CharacterController {
   mixer: AnimationMixer;
   animations: Record<CharacterState, any>;
   model: Group;
+  scene: Scene;
 
   camera: Camera;
   orbitControl: OrbitControls;
@@ -43,6 +45,7 @@ export class CharacterController {
 
   constructor(params: CharacterControllerParams) {
     this.camera = params.camera;
+    this.scene = params.scene;
     this.orbitControl = params.orbitControl;
     this.input = new CharacterControllerInput();
   }
@@ -59,6 +62,12 @@ export class CharacterController {
   async loadModel() {
     const loader = new GLTFLoader();
     const gltf = await loader.loadAsync(manGLB);
+
+    gltf.scene.traverse((el) => {
+      if (el.isMesh) {
+        el.castShadow = true;
+      }
+    });
 
     this.model = gltf.scene;
     this.mixer = new AnimationMixer(gltf.scene);
@@ -124,7 +133,7 @@ export class CharacterController {
       this.walkDirection.normalize();
       this.walkDirection.applyAxisAngle(this.rotateAngle, directionOffset);
 
-      const velocity = this.currentState === "run" ? 10 : 3;
+      const velocity = this.currentState === "run" ? 10 : 1.5;
 
       const moveX = this.walkDirection.x * velocity * deltaTime;
       const moveZ = this.walkDirection.z * velocity * deltaTime;
