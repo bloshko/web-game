@@ -10,6 +10,8 @@ import {
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
+import manGLB from "../assets/man.glb";
+
 type BasicCharacterControllerParams = {
   scene: Scene;
   orbitControl: OrbitControls;
@@ -50,7 +52,7 @@ export class BasicCharacterController {
 
   async loadModel() {
     const loader = new GLTFLoader();
-    const gltf = await loader.loadAsync("../assets/man.glb");
+    const gltf = await loader.loadAsync(manGLB);
 
     this.model = gltf.scene;
     this.mixer = new AnimationMixer(gltf.scene);

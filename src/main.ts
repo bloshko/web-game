@@ -2,6 +2,7 @@ import "./style.css";
 import { init } from "./setup";
 import { BasicCharacterController } from "./controls";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader";
+import levelGLB from "../assets/level.glb";
 
 const loader = new GLTFLoader();
 
@@ -17,7 +18,7 @@ const runNahabaGame = async () => {
   });
   await characterControls.init();
 
-  const levelGLTF = await loader.loadAsync("../assets/level.glb");
+  const levelGLTF = await loader.loadAsync(levelGLB);
   scene.add(levelGLTF.scene);
 
   scene.add(characterControls.model);
