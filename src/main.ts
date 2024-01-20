@@ -1,44 +1,39 @@
-import * as THREE from "three";
 import "./style.css";
+import { init } from "./setup";
+import { BasicCharacterController } from "./controls";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader";
 
-const container = document.getElementById("app") as HTMLElement;
+const loader = new GLTFLoader();
 
-const getCube = () => {
-  const geometry = new THREE.BoxGeometry(1, 1, 1);
-  const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-  const cube = new THREE.Mesh(geometry, material);
+const appContainer = document.getElementById("app") as HTMLElement;
 
-  return cube;
+const runNahabaGame = async () => {
+  const { orbitControl, scene, camera, renderer, clock } = init();
+
+  const characterControls = new BasicCharacterController({
+    scene,
+    orbitControl,
+    camera,
+  });
+  await characterControls.init();
+
+  const levelGLTF = await loader.loadAsync("../assets/level.glb");
+  scene.add(levelGLTF.scene);
+
+  scene.add(characterControls.model);
+
+  const animate = () => {
+    requestAnimationFrame(animate);
+    const deltaTime = clock.getDelta();
+
+    characterControls.update(deltaTime);
+
+    renderer.render(scene, camera);
+  };
+
+  appContainer.appendChild(renderer.domElement);
+
+  animate();
 };
 
-const camera = new THREE.PerspectiveCamera(
-  45,
-  window.innerWidth / window.innerHeight,
-  1,
-  2000,
-);
-camera.position.z = 5;
-
-const scene = new THREE.Scene();
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-const pointLight = new THREE.PointLight(0xffffff, 0.8);
-const cube = getCube();
-
-scene.add(cube);
-camera.add(pointLight);
-scene.add(ambientLight);
-scene.add(camera);
-
-const renderer = new THREE.WebGLRenderer();
-renderer.setPixelRatio(window.devicePixelRatio);
-renderer.setSize(window.innerWidth, window.innerHeight);
-container.appendChild(renderer.domElement);
-
-const animate = () => {
-  requestAnimationFrame(animate);
-  cube.rotation.x += 0.01;
-  cube.rotation.y += 0.01;
-  renderer.render(scene, camera);
-};
-
-animate();
+runNahabaGame();
