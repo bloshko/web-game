@@ -6,25 +6,28 @@ import {
   Quaternion,
   Camera,
   Group,
+  AnimationAction,
 } from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
 import manGLB from "../assets/man.glb";
 
-type BasicCharacterControllerParams = {
+type CharacterControllerParams = {
   scene: Scene;
   orbitControl: OrbitControls;
   camera: Camera;
 };
 
-export class BasicCharacterController {
-  private input: BasicCharacterControllerInput;
+type CharacterState = "idle" | "walk" | "run";
+
+export class CharacterController {
+  private input: CharacterControllerInput;
   velocity: Vector3;
   acceleration: Vector3;
-  params: BasicCharacterControllerParams;
+  params: CharacterControllerParams;
   mixer: AnimationMixer;
-  animations: Record<string, any>;
+  animations: Record<CharacterState, any>;
   model: Group;
 
   camera: Camera;
@@ -35,17 +38,20 @@ export class BasicCharacterController {
   rotateQuarternion = new Quaternion();
   cameraTarget = new Vector3();
 
-  constructor(params: BasicCharacterControllerParams) {
+  currentState: CharacterState = "idle";
+  currentAnimationAction: AnimationAction;
+
+  constructor(params: CharacterControllerParams) {
     this.camera = params.camera;
     this.orbitControl = params.orbitControl;
-    this.input = new BasicCharacterControllerInput();
+    this.input = new CharacterControllerInput();
   }
 
   async init() {
     this.velocity = new Vector3(0, 0, 0);
 
     this.animations = {};
-    this.input = new BasicCharacterControllerInput();
+    this.input = new CharacterControllerInput();
 
     await this.loadModel();
   }
@@ -57,37 +63,50 @@ export class BasicCharacterController {
     this.model = gltf.scene;
     this.mixer = new AnimationMixer(gltf.scene);
     this.animations = {
-      idle: gltf.animations[1],
-      walk: gltf.animations[3],
-      run: gltf.animations[2],
+      idle: this.mixer.clipAction(gltf.animations[1]),
+      walk: this.mixer.clipAction(gltf.animations[3]),
+      run: this.mixer.clipAction(gltf.animations[2]),
     };
 
-    this.mixer.clipAction(this.animations.run).setLoop(LoopRepeat).play();
-    // this.model.quaternion.setFromAxisAngle(new Vector3(0, 1, 0), -Math.PI / 2);
+    this.currentAnimationAction = this.animations[this.currentState]
+      .setLoop(LoopRepeat)
+      .play();
   }
 
-  private updateCameraTarget(moveX: number, moveZ: number) {
-    // move camera
-    this.camera.position.x += moveX;
-    this.camera.position.z += moveZ;
+  private updateAnimation(oldState: CharacterState, newState: CharacterState) {
+    if (oldState === newState) return;
 
-    // update camera target
-    this.cameraTarget.x = this.model.position.x;
-    this.cameraTarget.y = this.model.position.y + 1;
-    this.cameraTarget.z = this.model.position.z;
-    this.orbitControl.target = this.cameraTarget;
+    const newAction = this.animations[newState];
+
+    this.currentAnimationAction.fadeOut(0.2);
+    this.currentAnimationAction = newAction.reset().fadeIn(0.2).play();
+  }
+
+  private updateState() {
+    const { forward, backward, left, right, shift, space } = this.input.keys;
+    const oldState = this.currentState;
+    let newState: CharacterState = "idle";
+
+    if ([forward, backward, left, right].some(Boolean)) {
+      newState = "walk";
+      if (shift) {
+        newState = "run";
+      }
+    }
+
+    this.currentState = newState;
+    this.updateAnimation(oldState, newState);
   }
 
   update(deltaTime: number) {
     if (!this.model) {
       return;
     }
-
-    const { forward, backward, left, right, shift } = this.input.keys;
+    this.updateState();
 
     this.mixer.update(deltaTime);
 
-    if (forward || backward || left || right) {
+    if (["walk", "run"].includes(this.currentState)) {
       const angleYCameraDirection = Math.atan2(
         this.camera.position.x - this.model.position.x,
         this.camera.position.z - this.model.position.z,
@@ -98,14 +117,14 @@ export class BasicCharacterController {
         this.rotateAngle,
         angleYCameraDirection + directionOffset + Math.PI,
       );
-      this.model.quaternion.rotateTowards(this.rotateQuarternion, 0.2);
+      this.model.quaternion.rotateTowards(this.rotateQuarternion, 0.3);
 
       this.camera.getWorldDirection(this.walkDirection);
       this.walkDirection.y = 0;
       this.walkDirection.normalize();
       this.walkDirection.applyAxisAngle(this.rotateAngle, directionOffset);
 
-      const velocity = shift ? 10 : 3;
+      const velocity = this.currentState === "run" ? 10 : 3;
 
       const moveX = this.walkDirection.x * velocity * deltaTime;
       const moveZ = this.walkDirection.z * velocity * deltaTime;
@@ -143,6 +162,18 @@ export class BasicCharacterController {
 
     return directionOffset;
   }
+
+  private updateCameraTarget(moveX: number, moveZ: number) {
+    // move camera
+    this.camera.position.x += moveX;
+    this.camera.position.z += moveZ;
+
+    // update camera target
+    this.cameraTarget.x = this.model.position.x;
+    this.cameraTarget.y = this.model.position.y + 1;
+    this.cameraTarget.z = this.model.position.z;
+    this.orbitControl.target = this.cameraTarget;
+  }
 }
 
 type Key = "forward" | "backward" | "left" | "right" | "space" | "shift";
@@ -151,7 +182,7 @@ type Keys = {
   [K in Key]: boolean;
 };
 
-class BasicCharacterControllerInput {
+class CharacterControllerInput {
   keys: Keys;
 
   constructor() {
@@ -202,10 +233,12 @@ class BasicCharacterControllerInput {
     };
 
     window.addEventListener("keydown", (e) => {
+      e.stopPropagation();
       this.setKey(e.keyCode, true);
     });
 
     window.addEventListener("keyup", (e) => {
+      e.stopPropagation();
       this.setKey(e.keyCode, false);
     });
   }

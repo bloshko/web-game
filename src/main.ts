@@ -1,6 +1,6 @@
 import "./style.css";
 import { init } from "./setup";
-import { BasicCharacterController } from "./controls";
+import { CharacterController } from "./controls";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader";
 import levelGLB from "../assets/level.glb";
 
@@ -11,7 +11,7 @@ const appContainer = document.getElementById("app") as HTMLElement;
 const runNahabaGame = async () => {
   const { orbitControl, scene, camera, renderer, clock } = init();
 
-  const characterControls = new BasicCharacterController({
+  const characterControls = new CharacterController({
     scene,
     orbitControl,
     camera,
