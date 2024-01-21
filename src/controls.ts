@@ -7,7 +7,6 @@ import {
   Camera,
   Group,
   AnimationAction,
-  PointLight,
 } from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
@@ -28,7 +27,7 @@ export class CharacterController {
   acceleration: Vector3;
   params: CharacterControllerParams;
   mixer: AnimationMixer;
-  animations: Record<CharacterState, any>;
+  animations: Record<CharacterState, AnimationAction>;
   model: Group;
   scene: Scene;
 
@@ -53,7 +52,6 @@ export class CharacterController {
   async init() {
     this.velocity = new Vector3(0, 0, 0);
 
-    this.animations = {};
     this.input = new CharacterControllerInput();
 
     await this.loadModel();
@@ -173,11 +171,9 @@ export class CharacterController {
   }
 
   private updateCameraTarget(moveX: number, moveZ: number) {
-    // move camera
     this.camera.position.x += moveX;
     this.camera.position.z += moveZ;
 
-    // update camera target
     this.cameraTarget.x = this.model.position.x;
     this.cameraTarget.y = this.model.position.y + 1;
     this.cameraTarget.z = this.model.position.z;
