@@ -33,16 +33,6 @@ const runNahabaGame = async () => {
   const { orbitControl, scene, camera, renderer, clock } = init();
   const worldOctree = new Octree();
   const helper = new OctreeHelper(worldOctree);
-  helper.visible = true;
-  scene.add(helper);
-
-  const characterControls = new CharacterController({
-    scene,
-    orbitControl,
-    camera,
-    worldOctree,
-  });
-  await characterControls.init();
 
   const levelGLTF = await loader.loadAsync(levels.metro);
   levelGLTF.scene.traverse((el) => {
@@ -59,6 +49,16 @@ const runNahabaGame = async () => {
   collision.material.transparent = true;
   collision.material.opacity = 0;
   worldOctree.fromGraphNode(collision);
+  helper.visible = true;
+  scene.add(helper);
+
+  const characterControls = new CharacterController({
+    scene,
+    orbitControl,
+    camera,
+    worldOctree,
+  });
+  await characterControls.init();
 
   scene.add(levelGLTF.scene);
 

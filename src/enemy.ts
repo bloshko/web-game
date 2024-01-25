@@ -152,7 +152,7 @@ class Enemy {
 
 export class EnemyManager {
   originalModel: Group;
-  readonly ENEMY_NUM_LIMIT = 100;
+  readonly ENEMY_NUM_LIMIT = 30;
   ENEMY_MODELS: Group[] = [];
 
   enemies: Enemy[] = [];
