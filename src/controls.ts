@@ -55,6 +55,7 @@ export class CharacterController {
   speedMultiplier = 1;
   gravity = 50;
   directionOffset = 0;
+  isMjMode = false;
 
   constructor(params: CharacterControllerParams) {
     this.camera = params.camera;
@@ -70,6 +71,8 @@ export class CharacterController {
     this.input = new CharacterControllerInput();
 
     await this.loadModel();
+
+    this.input.onKeyDown(77, () => this.switchSpecialMode());
   }
 
   async loadModel() {
@@ -87,11 +90,13 @@ export class CharacterController {
     this.model.position.add(new Vector3(3, 0, 2));
 
     this.mixer = new AnimationMixer(gltf.scene);
+
     this.animations = {
-      jump: this.mixer.clipAction(gltf.animations[1]),
-      walk: this.mixer.clipAction(gltf.animations[3]),
-      run: this.mixer.clipAction(gltf.animations[2]),
       idle: this.mixer.clipAction(gltf.animations[0]),
+      jump: this.mixer.clipAction(gltf.animations[1]),
+      mj: this.mixer.clipAction(gltf.animations[2]),
+      run: this.mixer.clipAction(gltf.animations[3]),
+      walk: this.mixer.clipAction(gltf.animations[4]),
     };
 
     this.collider = new Capsule(new Vector3(), new Vector3(), 0.35);
@@ -106,12 +111,26 @@ export class CharacterController {
     this.currentAnimationAction = this.animations[this.currentState]
       .setLoop(LoopRepeat)
       .play();
+    this.mixer.addEventListener("finished", (e) => {
+      if (this.animations.jump === e.action) {
+        this.spawnDamageArea();
+      }
+    });
+  }
+
+  private spawnDamageArea() {}
+
+  private isInJump() {
+    return this.animations.jump.isRunning();
   }
 
   private updateAnimation(oldState: CharacterState, newState: CharacterState) {
     if (oldState === newState) return;
 
-    const newAction = this.animations[newState];
+    const specialState = this.isMjMode && newState === "walk" ? "mj" : null;
+
+    console.log(specialState);
+    const newAction = this.animations[specialState || newState];
 
     const loopMode = ["jump"].includes(this.currentState)
       ? LoopOnce
@@ -123,29 +142,6 @@ export class CharacterController {
       .fadeIn(0.2)
       .setLoop(loopMode)
       .play();
-  }
-
-  private updateState() {
-    const { forward, backward, left, right, shift, space } = this.input.keys;
-    const oldState = this.currentState;
-    let newState: CharacterState = "idle";
-
-    if ([forward, backward, left, right].some(Boolean)) {
-      newState = "walk";
-      if (shift) {
-        newState = "run";
-      }
-    }
-
-    if (space || !this.isPlayerOnFloor) {
-      newState = "jump";
-      if (this.isPlayerOnFloor) {
-        this.jumpOnce = true;
-      }
-    }
-
-    this.currentState = newState;
-    this.updateAnimation(oldState, newState);
   }
 
   playerCollisions() {
@@ -168,9 +164,12 @@ export class CharacterController {
         this.camera.position.z - this.model.position.z,
       );
 
+      const mjModifier =
+        this.currentState === "walk" && this.isMjMode ? Math.PI : 0;
+
       this.rotateQuarternion.setFromAxisAngle(
         new Vector3(0, 1, 0),
-        cameraAngleFromPlayer + this.directionOffset,
+        cameraAngleFromPlayer + this.directionOffset + mjModifier,
       );
       this.model.quaternion.rotateTowards(this.rotateQuarternion, 0.5);
     }
@@ -184,6 +183,14 @@ export class CharacterController {
     return this.walkDirection;
   }
 
+  switchSpecialMode() {
+    this.isMjMode = !this.isMjMode;
+
+    if (this.currentState === "walk") {
+      this.updateAnimation("idle", "walk");
+    }
+  }
+
   getSideVector() {
     this.camera.getWorldDirection(this.walkDirection);
     this.walkDirection.y = 0;
@@ -191,6 +198,30 @@ export class CharacterController {
     this.walkDirection.cross(this.camera.up);
 
     return this.walkDirection;
+  }
+
+  private updateState() {
+    const { forward, backward, left, right, shift, space } = this.input.keys;
+    const oldState = this.currentState;
+    let newState: CharacterState = "idle";
+
+    if ([forward, backward, left, right].some(Boolean)) {
+      newState = "walk";
+      if (shift) {
+        newState = "run";
+      }
+    }
+
+    if (space || this.isInJump()) {
+      newState = "jump";
+
+      if (this.isPlayerOnFloor && !this.isInJump()) {
+        this.jumpOnce = true;
+      }
+    }
+
+    this.currentState = newState;
+    this.updateAnimation(oldState, newState);
   }
 
   updateCollider(deltaTime: number) {
@@ -201,8 +232,6 @@ export class CharacterController {
       (this.isPlayerOnFloor ? 1 : 0.5) * this.gravity * this.speedMultiplier;
 
     let speedDelta = deltaTime * speed;
-
-    this.updateState();
 
     if (this.currentState === "run" && this.isPlayerOnFloor) {
       speedDelta *= 3;
@@ -229,10 +258,12 @@ export class CharacterController {
       this.jumpOnce = false;
     }
 
+    this.updateState();
+
     let damping = Math.exp(-15 * deltaTime) - 1;
 
     if (!this.isPlayerOnFloor) {
-      if (this.currentState === "jump") {
+      if (this.isInJump()) {
         this.velocity.y -= this.gravity * 0.7 * deltaTime;
       } else {
         this.velocity.y -= this.gravity * deltaTime;
@@ -365,6 +396,7 @@ type Keys = Record<Key, boolean>;
 
 class CharacterControllerInput {
   keys: Keys;
+  keyListeners: Record<number, () => void> = {};
 
   constructor() {
     this.init();
@@ -401,6 +433,20 @@ class CharacterControllerInput {
         this.keys.shift = value;
         break;
     }
+  }
+
+  onKeyDown(keyCode: number, callback: () => void) {
+    if (this.keyListeners[keyCode]) {
+      return;
+    }
+    const listener = window.addEventListener("keydown", (e) => {
+      e.stopPropagation();
+      if (e.keyCode === keyCode) {
+        callback();
+      }
+    });
+
+    this.keyListeners[keyCode] = listener;
   }
 
   private init() {
