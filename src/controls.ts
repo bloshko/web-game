@@ -25,8 +25,6 @@ type CharacterControllerParams = {
 
 type CharacterState = "idle" | "walk" | "run" | "jump";
 
-const OFFSET = 0.24696803207976714;
-
 export class CharacterController {
   private input: CharacterControllerInput;
   velocity: Vector3;
@@ -85,7 +83,7 @@ export class CharacterController {
     });
 
     this.model = gltf.scene;
-    //TODO: Change
+
     this.model.position.add(new Vector3(3, 0, 2));
 
     this.mixer = new AnimationMixer(gltf.scene);
@@ -97,7 +95,10 @@ export class CharacterController {
     };
 
     this.collider = new Capsule(new Vector3(), new Vector3(), 0.35);
+
     this.collider.start.copy(this.model.position);
+    this.collider.start.y = 0;
+
     this.collider.end.copy(
       this.model.position.clone().add(new Vector3(0, 1, 0)),
     );
@@ -125,7 +126,6 @@ export class CharacterController {
   }
 
   private updateState() {
-    // TODO: Fix jump animation not working when player is in the air
     const { forward, backward, left, right, shift, space } = this.input.keys;
     const oldState = this.currentState;
     let newState: CharacterState = "idle";
@@ -137,7 +137,7 @@ export class CharacterController {
       }
     }
 
-    if (space) {
+    if (space || !this.isPlayerOnFloor) {
       newState = "jump";
       if (this.isPlayerOnFloor) {
         this.jumpOnce = true;
@@ -223,8 +223,9 @@ export class CharacterController {
 
     if (this.isPlayerOnFloor) {
       if (this.currentState === "jump" && this.jumpOnce) {
-        this.velocity.y = 15;
+        this.velocity.y = 20;
       }
+
       this.jumpOnce = false;
     }
 
@@ -244,6 +245,7 @@ export class CharacterController {
     const deltaPosition = this.velocity.clone().multiplyScalar(deltaTime);
 
     this.collider.translate(deltaPosition);
+
     this.playerCollisions();
 
     this.camera.position.sub(this.orbitControl.target);
@@ -256,6 +258,10 @@ export class CharacterController {
   updatePlayerPosition(deltaTime: number) {
     this.model.position.copy(this.collider.end);
     this.model.position.y -= 1.25;
+
+    if (this.model.position.y < 0) {
+      this.model.position.y = 0;
+    }
 
     this.mixer.update(deltaTime);
   }

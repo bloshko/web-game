@@ -7,7 +7,6 @@ import level2GLB from "../assets/level2.glb";
 import { EnemyManager } from "./enemy";
 import Stats from "three/addons/libs/stats.module.js";
 import { Octree } from "three/addons/math/Octree.js";
-import { Box3, Vector3 } from "three";
 import { OctreeHelper } from "three/addons/helpers/OctreeHelper.js";
 
 const levels = {
@@ -63,7 +62,7 @@ const runNahabaGame = async () => {
 
   scene.add(levelGLTF.scene);
 
-  const enemyManager = new EnemyManager({ scene, loader });
+  const enemyManager = new EnemyManager({ scene, loader, worldOctree });
   await enemyManager.init();
 
   scene.add(characterControls.model);

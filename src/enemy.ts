@@ -7,23 +7,20 @@ import {
   Scene,
   Vector3,
   LoopRepeat,
-  BoxGeometry,
-  MeshBasicMaterial,
-  Mesh,
-  Box3,
 } from "three";
-import enemyGLB from "../assets/enemy.glb";
+import enemyAGLB from "../assets/enemyA.glb";
+import enemyBGLB from "../assets/enemyB.glb";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import { Octree } from "three/addons/math/Octree.js";
+import { Capsule } from "three/examples/jsm/math/Capsule";
 
 type CollisionSide = "top" | "bottom" | null;
 
 type EnemyState = "idle" | "running" | "dying";
 
-abstract class Enemy {
+class Enemy {
   readonly DISTANCE_TO_START_RUNNING = 3;
   readonly DISTANCE_TO_STOP_RUNNING = 8;
-  uvIndex: 0 | 1;
 
   private state: EnemyState = "idle";
 
@@ -34,9 +31,21 @@ abstract class Enemy {
   scene: Scene;
   currentAnimationAction: AnimationAction;
   worldOctree: Octree;
-  collider = new Box3();
+  collider: Capsule;
 
   runningDirection: Vector3;
+  speedMultiplier = 10;
+
+  private getRandomRunningDirection(): Vector3 {
+    const randomX = Math.random() * 2 - 1;
+    const randomZ = Math.random() * 2 - 1;
+
+    return new Vector3(randomX, 0, randomZ).normalize();
+  }
+
+  private getRandomSpeedMultiplier(): number {
+    return Math.random() * this.speedMultiplier + 1;
+  }
 
   constructor(params) {
     this.model = params.model;
@@ -45,15 +54,16 @@ abstract class Enemy {
     this.animations = params.animations;
 
     this.mixer = new AnimationMixer(this.model);
+    this.runningDirection = this.getRandomRunningDirection();
+    this.model.lookAt(this.runningDirection);
+    this.mixer.timeScale = 2.5;
+    this.speedMultiplier = this.getRandomSpeedMultiplier();
 
     this.model.traverse((el) => {
       if (el.isMesh) {
         el.castShadow = true;
       }
     });
-
-    // TODO: Fix uv index
-    this.model.children[0].children[0].material.map.channel = 1;
 
     this.animationActions = {
       idle: this.mixer.clipAction(this.animations[0]),
@@ -70,11 +80,28 @@ abstract class Enemy {
     this.spawnAtRandomPosition();
   }
 
+  playerCollisions() {
+    const result = this.worldOctree.capsuleIntersect(this.collider);
+
+    if (result) {
+      const newNormal = result.normal.clone();
+      newNormal.y = 0;
+
+      const randomVector = new Vector3().random().setY(0).multiplyScalar(0.3);
+      this.runningDirection = newNormal.add(randomVector).normalize();
+    }
+  }
+
   spawnAtRandomPosition() {
     const randomX = Math.random() * 30 - 20;
     const randomZ = Math.random() * 20 - 10;
 
-    this.model.position.set(randomX, 0, randomZ);
+    const vector = new Vector3(randomX, 0.3, randomZ);
+
+    this.collider = new Capsule(new Vector3(), new Vector3(), 0.35);
+    this.collider.start.copy(vector);
+    this.collider.end.copy(vector.add(new Vector3(0, 0.5, 0)));
+
     this.scene.add(this.model);
   }
 
@@ -87,7 +114,6 @@ abstract class Enemy {
   }
 
   handleDeath(): void {
-    //play animation
     this.changeState("dying");
   }
 
@@ -102,59 +128,63 @@ abstract class Enemy {
   }
 
   update(deltaTime: number): void {
-    if (this.getCollisionWithCharacter() === "top") {
-      // die
-      this.handleDeath();
-      return;
-    }
+    this.collider.translate(
+      this.runningDirection
+        .clone()
+        .multiplyScalar(deltaTime * this.speedMultiplier),
+    );
 
-    if (this.isInRunningZone()) {
-      this.changeState("running");
-    }
+    this.playerCollisions();
 
-    if (this.state === "running") {
-      // move character
-    }
     this.mixer.update(deltaTime);
-    this.collider.setFromObject(this.model);
+    this.updateModelPosition();
   }
-}
 
-class EnemyA extends Enemy {
-  readonly uvIndex = 0;
-}
+  private updateModelPosition() {
+    this.model.position.copy(this.collider.start);
 
-class EnemyB extends Enemy {
-  readonly uvIndex = 1;
+    this.model.position.y -= 0.3;
+    this.model.lookAt(
+      this.runningDirection.clone().add(this.model.position.clone().setY(0)),
+    );
+  }
 }
 
 export class EnemyManager {
   originalModel: Group;
-  readonly ENEMY_NUM_LIMIT = 20;
+  readonly ENEMY_NUM_LIMIT = 100;
+  ENEMY_MODELS: Group[] = [];
 
-  enemies: (EnemyA | EnemyB)[] = [];
+  enemies: Enemy[] = [];
 
   scene: Scene;
   loader: Loader;
+  worldOctree: Octree;
 
   constructor(params) {
     this.scene = params.scene;
     this.loader = params.loader;
+    this.worldOctree = params.worldOctree;
   }
 
   async init() {
-    this.originalModel = (await this.loader.loadAsync(enemyGLB)) as Group;
+    this.ENEMY_MODELS.push((await this.loader.loadAsync(enemyAGLB)) as Group);
+    this.ENEMY_MODELS.push((await this.loader.loadAsync(enemyBGLB)) as Group);
   }
 
   spawnEnemy() {
     if (this.enemies.length <= this.ENEMY_NUM_LIMIT) {
+      const randomModelIndex = Math.random() > 0.5 ? 1 : 0;
+      const originalModel = this.ENEMY_MODELS[randomModelIndex];
+
       const params = {
         scene: this.scene,
-        model: SkeletonUtils.clone(this.originalModel.scene),
-        animations: this.originalModel.animations,
+        model: SkeletonUtils.clone(originalModel.scene),
+        animations: originalModel.animations,
+        worldOctree: this.worldOctree,
       };
 
-      const newEnemy = new EnemyA(params);
+      const newEnemy = new Enemy(params);
       newEnemy.init();
 
       this.enemies.push(newEnemy);
@@ -165,6 +195,7 @@ export class EnemyManager {
 
   update(deltaTime: number) {
     this.spawnEnemy();
+
     for (const enemy of this.enemies) {
       enemy.update(deltaTime);
     }
