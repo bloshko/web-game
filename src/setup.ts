@@ -1,24 +1,21 @@
 import {
   Scene,
   WebGLRenderer,
-  AmbientLight,
   PointLight,
   PerspectiveCamera,
   Clock,
   TextureLoader,
-  SpotLight,
   Vector3,
   Color,
-  OrthographicCamera,
 } from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
 const MIN_INTENSITY = 250;
 const MAX_INTENSITY = 500;
 
-const spawnLights = (scene: Scene) => {
+const spawnRandomLights = (scene: Scene) => {
   const positions = [
-    new Vector3(10, 5, 0),
+    new Vector3(10, 7, 0),
     new Vector3(-3, 5, -5),
     new Vector3(0, 5, 0),
     new Vector3(-15, 8, -15),
@@ -39,14 +36,45 @@ const spawnLights = (scene: Scene) => {
   }
 };
 
-export const init = () => {
+const spawnLights = (scene: Scene) => {
+  const positions = [
+    //
+    // main
+    new Vector3(25, 5, 0),
+    new Vector3(0, 5, 0),
+    new Vector3(-25, 5, 0),
+    //
+    // train 1
+    new Vector3(22, 3, 14),
+    new Vector3(0, 3, 14),
+    new Vector3(-22, 3, 14),
+
+    //
+    // train 2
+    new Vector3(22, 3, -14),
+    new Vector3(0, 3, -14),
+    new Vector3(-22, 3, -14),
+  ];
+
+  for (const position of positions) {
+    const color = new Color(0xffffff);
+    const pointLight = new PointLight(color, 100);
+    pointLight.castShadow = true;
+    pointLight.position.copy(position);
+
+    scene.add(pointLight);
+  }
+};
+
+export const init = (isDebug?: boolean) => {
   const scene = new Scene();
   spawnLights(scene);
+
   const camera = new PerspectiveCamera(
-    50,
+    45,
     window.innerWidth / window.innerHeight,
     1,
-    2000,
+    300,
   );
 
   const renderer = new WebGLRenderer();

@@ -7,9 +7,14 @@ import {
   Scene,
   Vector3,
   LoopRepeat,
+  BoxGeometry,
+  MeshBasicMaterial,
+  Mesh,
+  Box3,
 } from "three";
 import enemyGLB from "../assets/enemy.glb";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
+import { Octree } from "three/addons/math/Octree.js";
 
 type CollisionSide = "top" | "bottom" | null;
 
@@ -28,12 +33,15 @@ abstract class Enemy {
   animations: AnimationClip[];
   scene: Scene;
   currentAnimationAction: AnimationAction;
+  worldOctree: Octree;
+  collider = new Box3();
 
   runningDirection: Vector3;
 
   constructor(params) {
     this.model = params.model;
     this.scene = params.scene;
+    this.worldOctree = params.worldOctree;
     this.animations = params.animations;
 
     this.mixer = new AnimationMixer(this.model);
@@ -45,10 +53,10 @@ abstract class Enemy {
     });
 
     // TODO: Fix uv index
-    this.model.children[0].children[0].material.map.channel = 0;
+    this.model.children[0].children[0].material.map.channel = 1;
 
     this.animationActions = {
-      idle: this.mixer.clipAction(this.animations[1]),
+      idle: this.mixer.clipAction(this.animations[0]),
       running: this.mixer.clipAction(this.animations[0]),
       dying: this.mixer.clipAction(this.animations[0]),
     };
@@ -108,6 +116,7 @@ abstract class Enemy {
       // move character
     }
     this.mixer.update(deltaTime);
+    this.collider.setFromObject(this.model);
   }
 }
 

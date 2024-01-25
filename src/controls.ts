@@ -7,10 +7,14 @@ import {
   Camera,
   Group,
   AnimationAction,
+  Box3,
+  LoopOnce,
+  Object3D,
 } from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-
+import { Capsule } from "three/examples/jsm/math/Capsule";
+import { Octree } from "three/addons/math/Octree.js";
 import manGLB from "../assets/man.glb";
 
 type CharacterControllerParams = {
@@ -19,7 +23,9 @@ type CharacterControllerParams = {
   camera: Camera;
 };
 
-type CharacterState = "idle" | "walk" | "run";
+type CharacterState = "idle" | "walk" | "run" | "jump";
+
+const OFFSET = 0.24696803207976714;
 
 export class CharacterController {
   private input: CharacterControllerInput;
@@ -30,7 +36,11 @@ export class CharacterController {
   animations: Record<CharacterState, AnimationAction>;
   model: Group;
   scene: Scene;
+  worldOctree: Octree;
+  jumpOnce = false;
 
+  collider: Capsule;
+  colliderPuppet: Object3D;
   camera: Camera;
   orbitControl: OrbitControls;
 
@@ -39,12 +49,19 @@ export class CharacterController {
   rotateQuarternion = new Quaternion();
   cameraTarget = new Vector3();
 
+  isPlayerOnFloor = true;
+
   currentState: CharacterState = "idle";
   currentAnimationAction: AnimationAction;
+
+  speedMultiplier = 1;
+  gravity = 50;
+  directionOffset = 0;
 
   constructor(params: CharacterControllerParams) {
     this.camera = params.camera;
     this.scene = params.scene;
+    this.worldOctree = params.worldOctree;
     this.orbitControl = params.orbitControl;
     this.input = new CharacterControllerInput();
   }
@@ -68,12 +85,22 @@ export class CharacterController {
     });
 
     this.model = gltf.scene;
+    //TODO: Change
+    this.model.position.add(new Vector3(3, 0, 2));
+
     this.mixer = new AnimationMixer(gltf.scene);
     this.animations = {
-      idle: this.mixer.clipAction(gltf.animations[1]),
+      jump: this.mixer.clipAction(gltf.animations[1]),
       walk: this.mixer.clipAction(gltf.animations[3]),
       run: this.mixer.clipAction(gltf.animations[2]),
+      idle: this.mixer.clipAction(gltf.animations[0]),
     };
+
+    this.collider = new Capsule(new Vector3(), new Vector3(), 0.35);
+    this.collider.start.copy(this.model.position);
+    this.collider.end.copy(
+      this.model.position.clone().add(new Vector3(0, 1, 0)),
+    );
 
     this.currentAnimationAction = this.animations[this.currentState]
       .setLoop(LoopRepeat)
@@ -85,11 +112,20 @@ export class CharacterController {
 
     const newAction = this.animations[newState];
 
+    const loopMode = ["jump"].includes(this.currentState)
+      ? LoopOnce
+      : LoopRepeat;
+
     this.currentAnimationAction.fadeOut(0.2);
-    this.currentAnimationAction = newAction.reset().fadeIn(0.2).play();
+    this.currentAnimationAction = newAction
+      .reset()
+      .fadeIn(0.2)
+      .setLoop(loopMode)
+      .play();
   }
 
   private updateState() {
+    // TODO: Fix jump animation not working when player is in the air
     const { forward, backward, left, right, shift, space } = this.input.keys;
     const oldState = this.currentState;
     let newState: CharacterState = "idle";
@@ -101,91 +137,225 @@ export class CharacterController {
       }
     }
 
+    if (space) {
+      newState = "jump";
+      if (this.isPlayerOnFloor) {
+        this.jumpOnce = true;
+      }
+    }
+
     this.currentState = newState;
     this.updateAnimation(oldState, newState);
   }
 
-  update(deltaTime: number) {
-    if (!this.model) {
-      return;
+  playerCollisions() {
+    const result = this.worldOctree.capsuleIntersect(this.collider);
+    this.isPlayerOnFloor = false;
+
+    if (result) {
+      this.isPlayerOnFloor = result.normal.y > 0;
+
+      const position = result.normal.multiplyScalar(result.depth);
+
+      this.collider.translate(position);
     }
-    this.updateState();
+  }
 
-    this.mixer.update(deltaTime);
-
-    if (["walk", "run"].includes(this.currentState)) {
-      const angleYCameraDirection = Math.atan2(
+  updateCameraPosition() {
+    if (this.currentState !== "idle") {
+      const cameraAngleFromPlayer = Math.atan2(
         this.camera.position.x - this.model.position.x,
         this.camera.position.z - this.model.position.z,
       );
-      const directionOffset = this.directionOffset(this.input.keys);
 
       this.rotateQuarternion.setFromAxisAngle(
-        this.rotateAngle,
-        angleYCameraDirection + directionOffset + Math.PI,
+        new Vector3(0, 1, 0),
+        cameraAngleFromPlayer + this.directionOffset,
       );
-      this.model.quaternion.rotateTowards(this.rotateQuarternion, 0.3);
+      this.model.quaternion.rotateTowards(this.rotateQuarternion, 0.5);
+    }
+  }
 
-      this.camera.getWorldDirection(this.walkDirection);
-      this.walkDirection.y = 0;
-      this.walkDirection.normalize();
-      this.walkDirection.applyAxisAngle(this.rotateAngle, directionOffset);
+  getForwardVector() {
+    this.camera.getWorldDirection(this.walkDirection);
+    this.walkDirection.y = 0;
+    this.walkDirection.normalize();
 
-      const velocity = this.currentState === "run" ? 10 : 1.5;
+    return this.walkDirection;
+  }
 
-      const moveX = this.walkDirection.x * velocity * deltaTime;
-      const moveZ = this.walkDirection.z * velocity * deltaTime;
-      this.model.position.x += moveX;
-      this.model.position.z += moveZ;
-      this.updateCameraTarget(moveX, moveZ);
-      this.orbitControl.update();
+  getSideVector() {
+    this.camera.getWorldDirection(this.walkDirection);
+    this.walkDirection.y = 0;
+    this.walkDirection.normalize();
+    this.walkDirection.cross(this.camera.up);
 
+    return this.walkDirection;
+  }
+
+  updateCollider(deltaTime: number) {
+    if (!this.model) {
       return;
     }
-  }
+    const speed =
+      (this.isPlayerOnFloor ? 1 : 0.5) * this.gravity * this.speedMultiplier;
 
-  private directionOffset(keysPressed: Keys) {
-    let directionOffset = 0; // w
+    let speedDelta = deltaTime * speed;
 
-    if (keysPressed.forward) {
-      if (keysPressed.left) {
-        directionOffset = Math.PI / 4; // w+a
-      } else if (keysPressed.right) {
-        directionOffset = -Math.PI / 4; // w+d
-      }
-    } else if (keysPressed.backward) {
-      if (keysPressed.left) {
-        directionOffset = Math.PI / 4 + Math.PI / 2; // s+a
-      } else if (keysPressed.right) {
-        directionOffset = -Math.PI / 4 - Math.PI / 2; // s+d
-      } else {
-        directionOffset = Math.PI; // s
-      }
-    } else if (keysPressed.left) {
-      directionOffset = Math.PI / 2; // a
-    } else if (keysPressed.right) {
-      directionOffset = -Math.PI / 2; // d
+    this.updateState();
+
+    if (this.currentState === "run" && this.isPlayerOnFloor) {
+      speedDelta *= 3;
     }
 
-    return directionOffset;
+    if (this.input.keys.forward) {
+      this.velocity.add(this.getForwardVector().multiplyScalar(speedDelta));
+    }
+    if (this.input.keys.backward) {
+      this.velocity.add(this.getForwardVector().multiplyScalar(-speedDelta));
+    }
+    if (this.input.keys.left) {
+      this.velocity.add(this.getSideVector().multiplyScalar(-speedDelta));
+    }
+    if (this.input.keys.right) {
+      this.velocity.add(this.getSideVector().multiplyScalar(speedDelta));
+    }
+
+    if (this.isPlayerOnFloor) {
+      if (this.currentState === "jump" && this.jumpOnce) {
+        this.velocity.y = 15;
+      }
+      this.jumpOnce = false;
+    }
+
+    let damping = Math.exp(-15 * deltaTime) - 1;
+
+    if (!this.isPlayerOnFloor) {
+      if (this.currentState === "jump") {
+        this.velocity.y -= this.gravity * 0.7 * deltaTime;
+      } else {
+        this.velocity.y -= this.gravity * deltaTime;
+      }
+      damping *= 0.1;
+    }
+
+    this.velocity.addScaledVector(this.velocity, damping);
+
+    const deltaPosition = this.velocity.clone().multiplyScalar(deltaTime);
+
+    this.collider.translate(deltaPosition);
+    this.playerCollisions();
+
+    this.camera.position.sub(this.orbitControl.target);
+    this.orbitControl.target.copy(this.collider.end);
+    this.camera.position.add(this.collider.end);
+
+    this.camera.updateMatrixWorld();
   }
 
-  private updateCameraTarget(moveX: number, moveZ: number) {
-    this.camera.position.x += moveX;
-    this.camera.position.z += moveZ;
+  updatePlayerPosition(deltaTime: number) {
+    this.model.position.copy(this.collider.end);
+    this.model.position.y -= 1.25;
 
-    this.cameraTarget.x = this.model.position.x;
-    this.cameraTarget.y = this.model.position.y + 1;
-    this.cameraTarget.z = this.model.position.z;
-    this.orbitControl.target = this.cameraTarget;
+    this.mixer.update(deltaTime);
   }
+
+  updatePlayerRotation() {
+    const { forward, backward, left, right } = this.input.keys;
+    if (forward) {
+      this.directionOffset = Math.PI;
+    }
+    if (backward) {
+      this.directionOffset = 0;
+    }
+
+    if (left) {
+      this.directionOffset = -Math.PI / 2;
+    }
+
+    if (forward && left) {
+      this.directionOffset = Math.PI + Math.PI / 4;
+    }
+    if (backward && left) {
+      this.directionOffset = -Math.PI / 4;
+    }
+
+    if (right) {
+      this.directionOffset = Math.PI / 2;
+    }
+
+    if (forward && right) {
+      this.directionOffset = Math.PI - Math.PI / 4;
+    }
+    if (backward && right) {
+      this.directionOffset = Math.PI / 4;
+    }
+
+    if (forward && left && right) {
+      this.directionOffset = Math.PI;
+    }
+    if (backward && left && right) {
+      this.directionOffset = 0;
+    }
+
+    if (right && backward && forward) {
+      this.directionOffset = Math.PI / 2;
+    }
+
+    if (left && backward && forward) {
+      this.directionOffset = -Math.PI / 2;
+    }
+  }
+
+  update(deltaTime: number) {
+    this.updateState();
+    this.updateCollider(deltaTime);
+    this.updatePlayerPosition(deltaTime);
+    this.updatePlayerRotation();
+    this.updateCameraPosition();
+  }
+
+  // private directionOffset(keysPressed: Keys) {
+  //   let directionOffset = 0; // w
+  //
+  //   if (keysPressed.forward) {
+  //     if (keysPressed.left) {
+  //       directionOffset = Math.PI / 4; // w+a
+  //     } else if (keysPressed.right) {
+  //       directionOffset = -Math.PI / 4; // w+d
+  //     }
+  //   } else if (keysPressed.backward) {
+  //     if (keysPressed.left) {
+  //       directionOffset = Math.PI / 4 + Math.PI / 2; // s+a
+  //     } else if (keysPressed.right) {
+  //       directionOffset = -Math.PI / 4 - Math.PI / 2; // s+d
+  //     } else {
+  //       directionOffset = Math.PI; // s
+  //     }
+  //   } else if (keysPressed.left) {
+  //     directionOffset = Math.PI / 2; // a
+  //   } else if (keysPressed.right) {
+  //     directionOffset = -Math.PI / 2; // d
+  //   }
+  //
+  //   return directionOffset;
+  // }
+
+  // private updateCameraTarget(moveX: number, moveY: number, moveZ: number) {
+  //   this.camera.position.x += moveX;
+  //   this.camera.position.z += moveZ;
+  //   this.camera.position.y += moveY;
+  //
+  //   // TODO: Check if I need model here
+  //   this.orbitControl.target = this.model.position
+  //     .clone()
+  //     .add(new Vector3(0, 1, 0));
+  // }
 }
 
 type Key = "forward" | "backward" | "left" | "right" | "space" | "shift";
 
-type Keys = {
-  [K in Key]: boolean;
-};
+type Keys = Record<Key, boolean>;
 
 class CharacterControllerInput {
   keys: Keys;
