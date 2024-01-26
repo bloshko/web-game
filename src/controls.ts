@@ -172,7 +172,9 @@ export class CharacterController {
       );
 
       const mjModifier =
-        this.currentState === "walk" && this.isMjMode ? Math.PI : 0;
+        this.currentState === "walk" && this.isMjMode && this.character !== "O"
+          ? Math.PI
+          : 0;
 
       this.rotateQuarternion.setFromAxisAngle(
         new Vector3(0, 1, 0),
