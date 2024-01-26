@@ -37,9 +37,14 @@ const getSearchParams = () => {
   return params;
 };
 
-const startPlaying = () => {
+const startPlaying = (audioContext: AudioContext) => {
   document.getElementById("loading-text").style.display = "none";
   document.getElementById("play-text").style.display = "inline";
+
+  document.getElementById("play-overlay")?.addEventListener("click", () => {
+    document.getElementById("play-overlay").style.display = "none";
+    audioContext.resume();
+  });
 };
 
 const runNahabaGame = async () => {
@@ -90,7 +95,7 @@ const runNahabaGame = async () => {
 
   const stats = IS_DEBUG ? getStats() : null;
 
-  startPlaying();
+  startPlaying(characterControls.listener.context);
 
   const animate = () => {
     const deltaTime = clock.getDelta();

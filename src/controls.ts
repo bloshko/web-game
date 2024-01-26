@@ -127,15 +127,6 @@ export class CharacterController {
     });
     this.listener = new AudioListener();
     this.model.add(this.listener);
-
-    this.addPlayButton();
-  }
-
-  private addPlayButton() {
-    document.getElementById("play-overlay")?.addEventListener("click", () => {
-      document.getElementById("play-overlay").style.display = "none";
-      this.listener.context.resume();
-    });
   }
 
   private spawnDamageArea() {}
