@@ -29,10 +29,20 @@ const getStats = () => {
   return stats;
 };
 
+const getSearchParams = () => {
+  const search = window.location.search;
+
+  const params = new URLSearchParams(search);
+
+  return params;
+};
+
 const runNahabaGame = async () => {
   const { orbitControl, scene, camera, renderer, clock } = init();
   const worldOctree = new Octree();
   const helper = new OctreeHelper(worldOctree);
+  const params = getSearchParams();
+  const character = params.get("character") || "A";
 
   const levelGLTF = await loader.loadAsync(levels.metro);
   levelGLTF.scene.traverse((el) => {
@@ -57,6 +67,7 @@ const runNahabaGame = async () => {
     orbitControl,
     camera,
     worldOctree,
+    character,
   });
   await characterControls.init();
 

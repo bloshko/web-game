@@ -44,7 +44,7 @@ class Enemy {
   }
 
   private getRandomSpeedMultiplier(): number {
-    return Math.random() * this.speedMultiplier + 1;
+    return Math.random() * 10 + 1;
   }
 
   constructor(params) {

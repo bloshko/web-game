@@ -16,11 +16,14 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { Capsule } from "three/examples/jsm/math/Capsule";
 import { Octree } from "three/addons/math/Octree.js";
 import manGLB from "../assets/man.glb";
+import womanGLB from "../assets/woman.glb";
 
+type Character = "A" | "O";
 type CharacterControllerParams = {
   scene: Scene;
   orbitControl: OrbitControls;
   camera: Camera;
+  character: Character;
 };
 
 type CharacterState = "idle" | "walk" | "run" | "jump";
@@ -57,11 +60,14 @@ export class CharacterController {
   directionOffset = 0;
   isMjMode = false;
 
+  character: Character = "A";
+
   constructor(params: CharacterControllerParams) {
     this.camera = params.camera;
     this.scene = params.scene;
     this.worldOctree = params.worldOctree;
     this.orbitControl = params.orbitControl;
+    this.character = params.character;
     this.input = new CharacterControllerInput();
   }
 
@@ -77,7 +83,9 @@ export class CharacterController {
 
   async loadModel() {
     const loader = new GLTFLoader();
-    const gltf = await loader.loadAsync(manGLB);
+    const gltf = await loader.loadAsync(
+      this.character === "O" ? womanGLB : manGLB,
+    );
 
     gltf.scene.traverse((el) => {
       if (el.isMesh) {
@@ -129,7 +137,6 @@ export class CharacterController {
 
     const specialState = this.isMjMode && newState === "walk" ? "mj" : null;
 
-    console.log(specialState);
     const newAction = this.animations[specialState || newState];
 
     const loopMode = ["jump"].includes(this.currentState)
