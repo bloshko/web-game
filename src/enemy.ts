@@ -1,15 +1,27 @@
 import {
   AnimationAction,
   AnimationClip,
+  AudioListener,
   AnimationMixer,
+  AudioLoader,
+  Audio,
   Group,
   Loader,
   Scene,
   Vector3,
   LoopRepeat,
+  PositionalAudio,
 } from "three";
+
 import enemyAGLB from "../assets/enemies/enemyA.glb";
 import enemyBGLB from "../assets/enemies/enemyB.glb";
+
+import soundA from "../assets/sounds/audio_1.ogg";
+import soundB from "../assets/sounds/audio_2.ogg";
+import soundC from "../assets/sounds/audio_3.ogg";
+import soundD from "../assets/sounds/audio_4.ogg";
+import soundE from "../assets/sounds/audio_5.ogg";
+
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import { Octree } from "three/addons/math/Octree.js";
 import { Capsule } from "three/examples/jsm/math/Capsule";
@@ -32,9 +44,12 @@ class Enemy {
   currentAnimationAction: AnimationAction;
   worldOctree: Octree;
   collider: Capsule;
+  sound: Audio;
 
   runningDirection: Vector3;
   speedMultiplier = 10;
+
+  isDead = false;
 
   private getRandomRunningDirection(): Vector3 {
     const randomX = Math.random() * 2 - 1;
@@ -58,6 +73,7 @@ class Enemy {
     this.model.lookAt(this.runningDirection);
     this.mixer.timeScale = 2.5;
     this.speedMultiplier = this.getRandomSpeedMultiplier();
+    this.sound = params.sound;
 
     this.model.traverse((el) => {
       if (el.isMesh) {
@@ -74,6 +90,9 @@ class Enemy {
     this.currentAnimationAction = this.animationActions[this.state]
       .setLoop(LoopRepeat)
       .play();
+
+    this.model.add(this.sound);
+    this.sound.play();
   }
 
   init(): void {
@@ -151,37 +170,72 @@ class Enemy {
 }
 
 export class EnemyManager {
-  originalModel: Group;
-  readonly ENEMY_NUM_LIMIT = 30;
   ENEMY_MODELS: Group[] = [];
+  readonly ENEMY_NUM_LIMIT = 30;
+  readonly SOUND_PATHS = [soundA, soundB, soundC, soundD, soundE];
 
   enemies: Enemy[] = [];
+
+  soundBuffers = [];
 
   scene: Scene;
   loader: Loader;
   worldOctree: Octree;
+  listener: AudioListener;
+
+  audioLoader: AudioLoader;
 
   constructor(params) {
     this.scene = params.scene;
     this.loader = params.loader;
     this.worldOctree = params.worldOctree;
+    this.listener = params.listener;
+    this.audioLoader = new AudioLoader();
   }
 
   async init() {
     this.ENEMY_MODELS.push((await this.loader.loadAsync(enemyAGLB)) as Group);
     this.ENEMY_MODELS.push((await this.loader.loadAsync(enemyBGLB)) as Group);
+
+    for (const soundPath of this.SOUND_PATHS) {
+      await this.loadSound(soundPath);
+    }
+  }
+
+  private getRandomArrayElementIndex(arrayLength: number) {
+    return Math.floor(Math.random() * arrayLength);
+  }
+
+  private getRandomModel() {
+    const randomModelIndex = Math.random() > 0.5 ? 1 : 0;
+    return this.ENEMY_MODELS[randomModelIndex];
+  }
+
+  async loadSound(path: string) {
+    const buffer = await this.audioLoader.loadAsync(path);
+
+    this.soundBuffers.push(buffer);
   }
 
   spawnEnemy() {
     if (this.enemies.length <= this.ENEMY_NUM_LIMIT) {
-      const randomModelIndex = Math.random() > 0.5 ? 1 : 0;
-      const originalModel = this.ENEMY_MODELS[randomModelIndex];
+      const originalModel = this.getRandomModel();
+      const randomBuffer =
+        this.soundBuffers[
+          this.getRandomArrayElementIndex(this.soundBuffers.length)
+        ];
+      const sound = new PositionalAudio(this.listener);
+      sound.setBuffer(randomBuffer);
+      sound.setLoop(true);
+      sound.setRefDistance(0.5);
+      sound.setVolume(0.6);
 
       const params = {
         scene: this.scene,
         model: SkeletonUtils.clone(originalModel.scene),
         animations: originalModel.animations,
         worldOctree: this.worldOctree,
+        sound,
       };
 
       const newEnemy = new Enemy(params);
@@ -193,11 +247,16 @@ export class EnemyManager {
     return;
   }
 
+  despawnEnemy() {}
+
   update(deltaTime: number) {
     this.spawnEnemy();
 
     for (const enemy of this.enemies) {
       enemy.update(deltaTime);
     }
+
+    // const deadEnemies = this.enemies.filter((enemy) => enemy.isDead);
+    this.despawnEnemy();
   }
 }

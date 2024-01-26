@@ -73,7 +73,12 @@ const runNahabaGame = async () => {
 
   scene.add(levelGLTF.scene);
 
-  const enemyManager = new EnemyManager({ scene, loader, worldOctree });
+  const enemyManager = new EnemyManager({
+    scene,
+    loader,
+    worldOctree,
+    listener: characterControls.listener,
+  });
   await enemyManager.init();
 
   scene.add(characterControls.model);

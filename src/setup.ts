@@ -7,6 +7,7 @@ import {
   TextureLoader,
   Vector3,
   Color,
+  AudioListener,
 } from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 

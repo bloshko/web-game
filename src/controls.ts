@@ -1,13 +1,13 @@
 import {
   Vector3,
   Scene,
+  AudioListener,
   AnimationMixer,
   LoopRepeat,
   Quaternion,
   Camera,
   Group,
   AnimationAction,
-  Box3,
   LoopOnce,
   Object3D,
 } from "three";
@@ -61,6 +61,7 @@ export class CharacterController {
   isMjMode = false;
 
   character: Character = "A";
+  listener: AudioListener;
 
   constructor(params: CharacterControllerParams) {
     this.camera = params.camera;
@@ -123,6 +124,17 @@ export class CharacterController {
       if (this.animations.jump === e.action) {
         this.spawnDamageArea();
       }
+    });
+    this.listener = new AudioListener();
+    this.model.add(this.listener);
+
+    this.addPlayButton();
+  }
+
+  private addPlayButton() {
+    document.getElementById("play-overlay")?.addEventListener("click", () => {
+      document.getElementById("play-overlay").style.display = "none";
+      this.listener.context.resume();
     });
   }
 
