@@ -8,8 +8,8 @@ import {
   Vector3,
   LoopRepeat,
 } from "three";
-import enemyAGLB from "../assets/enemyA.glb";
-import enemyBGLB from "../assets/enemyB.glb";
+import enemyAGLB from "../assets/enemies/enemyA.glb";
+import enemyBGLB from "../assets/enemies/enemyB.glb";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import { Octree } from "three/addons/math/Octree.js";
 import { Capsule } from "three/examples/jsm/math/Capsule";

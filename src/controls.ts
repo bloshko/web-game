@@ -15,8 +15,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { Capsule } from "three/examples/jsm/math/Capsule";
 import { Octree } from "three/addons/math/Octree.js";
-import manGLB from "../assets/man.glb";
-import womanGLB from "../assets/woman.glb";
+import manGLB from "../assets/characters/man.glb";
+import womanGLB from "../assets/characters/woman.glb";
 
 type Character = "A" | "O";
 type CharacterControllerParams = {
