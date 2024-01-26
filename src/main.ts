@@ -37,6 +37,11 @@ const getSearchParams = () => {
   return params;
 };
 
+const startPlaying = () => {
+  document.getElementById("loading-text").style.display = "none";
+  document.getElementById("play-text").style.display = "inline";
+};
+
 const runNahabaGame = async () => {
   const { orbitControl, scene, camera, renderer, clock } = init();
   const worldOctree = new Octree();
@@ -84,6 +89,8 @@ const runNahabaGame = async () => {
   scene.add(characterControls.model);
 
   const stats = IS_DEBUG ? getStats() : null;
+
+  startPlaying();
 
   const animate = () => {
     const deltaTime = clock.getDelta();

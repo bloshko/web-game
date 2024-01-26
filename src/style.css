@@ -23,3 +23,7 @@ p {
   color: white;
   font-weight: normal;
 }
+
+#play-text {
+  display: none;
+}
