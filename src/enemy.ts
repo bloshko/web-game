@@ -16,14 +16,14 @@ import {
 import enemyAGLB from "../assets/enemies/enemyA.glb";
 import enemyBGLB from "../assets/enemies/enemyB.glb";
 
-import soundA from "../assets/sounds/audio_1.ogg";
-import soundB from "../assets/sounds/audio_2.ogg";
-import soundC from "../assets/sounds/audio_3.ogg";
-import soundD from "../assets/sounds/audio_4.ogg";
-import soundE from "../assets/sounds/audio_5.ogg";
-import soundF from "../assets/sounds/audio_6.ogg";
-import soundG from "../assets/sounds/audio_7.ogg";
-import soundH from "../assets/sounds/audio_8.ogg";
+import soundA from "../assets/sounds/audio_1.mp3";
+import soundB from "../assets/sounds/audio_2.mp3";
+import soundC from "../assets/sounds/audio_3.mp3";
+import soundD from "../assets/sounds/audio_4.mp3";
+import soundE from "../assets/sounds/audio_5.mp3";
+import soundF from "../assets/sounds/audio_6.mp3";
+import soundG from "../assets/sounds/audio_7.mp3";
+import soundH from "../assets/sounds/audio_8.mp3";
 
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import { Octree } from "three/addons/math/Octree.js";
