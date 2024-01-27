@@ -451,11 +451,13 @@ class CharacterControllerInput {
 
     window.addEventListener("keydown", (e) => {
       e.stopPropagation();
+      e.preventDefault();
       this.setKey(e.keyCode, true);
     });
 
     window.addEventListener("keyup", (e) => {
       e.stopPropagation();
+      e.preventDefault();
       this.setKey(e.keyCode, false);
     });
   }
