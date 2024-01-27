@@ -63,6 +63,8 @@ export class CharacterController {
   character: Character = "A";
   listener: AudioListener;
 
+  spawnPoint = new Vector3(25, 0, 0);
+
   constructor(params: CharacterControllerParams) {
     this.camera = params.camera;
     this.scene = params.scene;
@@ -110,12 +112,7 @@ export class CharacterController {
 
     this.collider = new Capsule(new Vector3(), new Vector3(), 0.35);
 
-    this.collider.start.copy(this.model.position);
-    this.collider.start.y = 0;
-
-    this.collider.end.copy(
-      this.model.position.clone().add(new Vector3(0, 1, 0)),
-    );
+    this.spawn();
 
     this.currentAnimationAction = this.animations[this.currentState]
       .setLoop(LoopRepeat)
@@ -125,6 +122,7 @@ export class CharacterController {
         this.spawnDamageArea();
       }
     });
+
     this.listener = new AudioListener();
     this.model.add(this.listener);
   }
@@ -356,50 +354,30 @@ export class CharacterController {
     }
   }
 
+  private moveTo(vector: Vector3) {
+    this.collider.start.copy(vector);
+    this.collider.start.y = 0;
+    this.collider.end.copy(vector.clone().add(new Vector3(0, 1, 0)));
+  }
+
+  private respawnIfOutOfBoundaries() {
+    if (this.collider.start.y < -10) {
+      this.moveTo(this.spawnPoint);
+    }
+  }
+
+  private spawn() {
+    this.moveTo(this.spawnPoint);
+  }
+
   update(deltaTime: number) {
     this.updateState();
     this.updateCollider(deltaTime);
     this.updatePlayerPosition(deltaTime);
     this.updatePlayerRotation();
     this.updateCameraPosition();
+    this.respawnIfOutOfBoundaries();
   }
-
-  // private directionOffset(keysPressed: Keys) {
-  //   let directionOffset = 0; // w
-  //
-  //   if (keysPressed.forward) {
-  //     if (keysPressed.left) {
-  //       directionOffset = Math.PI / 4; // w+a
-  //     } else if (keysPressed.right) {
-  //       directionOffset = -Math.PI / 4; // w+d
-  //     }
-  //   } else if (keysPressed.backward) {
-  //     if (keysPressed.left) {
-  //       directionOffset = Math.PI / 4 + Math.PI / 2; // s+a
-  //     } else if (keysPressed.right) {
-  //       directionOffset = -Math.PI / 4 - Math.PI / 2; // s+d
-  //     } else {
-  //       directionOffset = Math.PI; // s
-  //     }
-  //   } else if (keysPressed.left) {
-  //     directionOffset = Math.PI / 2; // a
-  //   } else if (keysPressed.right) {
-  //     directionOffset = -Math.PI / 2; // d
-  //   }
-  //
-  //   return directionOffset;
-  // }
-
-  // private updateCameraTarget(moveX: number, moveY: number, moveZ: number) {
-  //   this.camera.position.x += moveX;
-  //   this.camera.position.z += moveZ;
-  //   this.camera.position.y += moveY;
-  //
-  //   // TODO: Check if I need model here
-  //   this.orbitControl.target = this.model.position
-  //     .clone()
-  //     .add(new Vector3(0, 1, 0));
-  // }
 }
 
 type Key = "forward" | "backward" | "left" | "right" | "space" | "shift";
