@@ -10,6 +10,7 @@ import {
     LoopRepeat,
     PositionalAudio,
     Scene,
+    Sphere,
     Vector3,
 } from 'three';
 import { Octree } from 'three/addons/math/Octree.js';
@@ -26,6 +27,7 @@ import soundE from '../assets/sounds/audio_5.mp3';
 import soundF from '../assets/sounds/audio_6.mp3';
 import soundG from '../assets/sounds/audio_7.mp3';
 import soundH from '../assets/sounds/audio_8.mp3';
+import { Attack } from './attack';
 
 type CollisionSide = 'top' | 'bottom' | null;
 
@@ -45,6 +47,8 @@ class Enemy {
     currentAnimationAction: AnimationAction;
     worldOctree: Octree;
     collider: Capsule;
+    attackThatKillsCollider: Sphere;
+    attackThatKillsColliderRadius = 1;
     sound: Audio;
 
     runningDirection: Vector3;
@@ -94,6 +98,10 @@ class Enemy {
 
         this.model.add(this.sound);
         this.sound.play();
+        this.attackThatKillsCollider = new Sphere(
+            this.model.position,
+            this.attackThatKillsColliderRadius
+        );
     }
 
     init(): void {
@@ -161,6 +169,7 @@ class Enemy {
 
         this.mixer.update(deltaTime);
         this.updateModelPosition();
+        this.updateAttackThatKillsColliderPosition();
     }
 
     private updateModelPosition() {
@@ -173,7 +182,22 @@ class Enemy {
                 .add(this.model.position.clone().setY(0))
         );
     }
+
+    private updateAttackThatKillsColliderPosition() {
+        this.attackThatKillsCollider.set(
+            this.model.position,
+            this.attackThatKillsColliderRadius
+        );
+    }
 }
+
+type EnemyManagerParams = {
+    scene: Scene;
+    loader: Loader;
+    worldOctree: Octree;
+    listener: AudioListener;
+    attackThatKills: Attack;
+};
 
 export class EnemyManager {
     ENEMY_MODELS: Group[] = [];
@@ -197,15 +221,17 @@ export class EnemyManager {
     loader: Loader;
     worldOctree: Octree;
     listener: AudioListener;
+    attackThatKills: Attack;
 
     audioLoader: AudioLoader;
 
-    constructor(params) {
+    constructor(params: EnemyManagerParams) {
         this.scene = params.scene;
         this.loader = params.loader;
         this.worldOctree = params.worldOctree;
         this.listener = params.listener;
         this.audioLoader = new AudioLoader();
+        this.attackThatKills = params.attackThatKills;
     }
 
     async init() {
@@ -272,6 +298,14 @@ export class EnemyManager {
         this.spawnEnemy();
 
         for (const enemy of this.enemies) {
+            const hasCollisionWithAttack =
+                this.attackThatKills.hasCollisionWithSphere(
+                    enemy.attackThatKillsCollider
+                );
+
+            if (hasCollisionWithAttack) {
+                console.log('HAS COLLISION');
+            }
             enemy.update(deltaTime);
         }
 

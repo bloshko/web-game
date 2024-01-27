@@ -18,6 +18,7 @@ import { Capsule } from 'three/examples/jsm/math/Capsule';
 
 import manGLB from '../assets/characters/man.glb';
 import womanGLB from '../assets/characters/woman.glb';
+import { SphericalAttack } from './attack';
 
 type Character = 'A' | 'O';
 type CharacterControllerParams = {
@@ -59,6 +60,8 @@ export class CharacterController {
     directionOffset = 0;
     isMjMode = false;
 
+    smashAttack: SphericalAttack;
+
     character: Character = 'A';
     listener: AudioListener;
 
@@ -69,6 +72,7 @@ export class CharacterController {
         this.orbitControl = params.orbitControl;
         this.character = params.character;
         this.input = new CharacterControllerInput();
+        this.smashAttack = new SphericalAttack();
     }
 
     async init() {
@@ -133,7 +137,9 @@ export class CharacterController {
         this.model.add(this.listener);
     }
 
-    private spawnDamageArea() {}
+    private spawnDamageArea() {
+        this.smashAttack.attack(this.collider.start);
+    }
 
     private isInJumpAnimation() {
         return this.animations.jump.isRunning();
@@ -395,6 +401,7 @@ export class CharacterController {
         this.updatePlayerRotation();
         this.updateCameraPosition();
         this.respawnIfOutOfBoundaries();
+        this.smashAttack.update();
     }
 }
 

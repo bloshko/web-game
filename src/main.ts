@@ -65,7 +65,7 @@ export const runNahabaGame = async (params = defaultParams) => {
     const appContainer = document.getElementById(appContainerId) as HTMLElement;
 
     const { orbitControl, scene, camera, renderer, clock } = init();
-    const worldOctree = new Octree();
+    const worldOctree = new Octree() as Octree;
     const helper = new OctreeHelper(worldOctree);
 
     const searchParams = getSearchParams();
@@ -105,6 +105,7 @@ export const runNahabaGame = async (params = defaultParams) => {
         loader,
         worldOctree,
         listener: characterControls.listener,
+        attackThatKills: characterControls.smashAttack,
     });
     await enemyManager.init();
 
