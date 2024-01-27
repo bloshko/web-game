@@ -10,6 +10,7 @@ import {
   AnimationAction,
   LoopOnce,
   Object3D,
+  AnimationClip,
 } from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
@@ -26,7 +27,7 @@ type CharacterControllerParams = {
   character: Character;
 };
 
-type CharacterState = "idle" | "walk" | "run" | "jump";
+type CharacterState = "idle" | "walk" | "run" | "jump" | "in_air";
 
 export class CharacterController {
   private input: CharacterControllerInput;
@@ -39,6 +40,8 @@ export class CharacterController {
   scene: Scene;
   worldOctree: Octree;
   jumpOnce = false;
+
+  canJump = true;
 
   collider: Capsule;
   colliderPuppet: Object3D;
@@ -63,7 +66,7 @@ export class CharacterController {
   character: Character = "A";
   listener: AudioListener;
 
-  spawnPoint = new Vector3(25, 0, 0);
+  readonly spawnPoint = new Vector3(25, 0, 0);
 
   constructor(params: CharacterControllerParams) {
     this.camera = params.camera;
@@ -84,6 +87,19 @@ export class CharacterController {
     this.input.onKeyDown(77, () => this.switchSpecialMode());
   }
 
+  private setupAnimations(gltfAnimations: AnimationClip[]) {
+    this.animations = {
+      idle: this.mixer.clipAction(gltfAnimations[0]).setLoop(LoopRepeat),
+      jump: this.mixer.clipAction(gltfAnimations[1]).setLoop(LoopOnce),
+      mj: this.mixer.clipAction(gltfAnimations[2]).setLoop(LoopRepeat),
+      run: this.mixer.clipAction(gltfAnimations[3]).setLoop(LoopRepeat),
+      walk: this.mixer
+        .clipAction(gltfAnimations[4])
+        .setLoop(LoopRepeat)
+        .setDuration(0.8),
+    };
+  }
+
   async loadModel() {
     const loader = new GLTFLoader();
     const gltf = await loader.loadAsync(
@@ -102,24 +118,20 @@ export class CharacterController {
 
     this.mixer = new AnimationMixer(gltf.scene);
 
-    this.animations = {
-      idle: this.mixer.clipAction(gltf.animations[0]),
-      jump: this.mixer.clipAction(gltf.animations[1]),
-      mj: this.mixer.clipAction(gltf.animations[2]),
-      run: this.mixer.clipAction(gltf.animations[3]),
-      walk: this.mixer.clipAction(gltf.animations[4]),
-    };
-
     this.collider = new Capsule(new Vector3(), new Vector3(), 0.35);
 
     this.spawn();
 
+    this.setupAnimations(gltf.animations);
+
     this.currentAnimationAction = this.animations[this.currentState]
       .setLoop(LoopRepeat)
       .play();
+
     this.mixer.addEventListener("finished", (e) => {
       if (this.animations.jump === e.action) {
         this.spawnDamageArea();
+        this.canJump = true;
       }
     });
 
@@ -129,27 +141,29 @@ export class CharacterController {
 
   private spawnDamageArea() {}
 
-  private isInJump() {
+  private isInJumpAnimation() {
     return this.animations.jump.isRunning();
   }
 
+  private getAnimation(state: CharacterState) {
+    if (state === "in_air") {
+      return this.animations["jump"];
+    }
+
+    if (state === "walk" && this.isMjMode) {
+      return this.animations["mj"];
+    }
+
+    return this.animations[state];
+  }
+
   private updateAnimation(oldState: CharacterState, newState: CharacterState) {
-    if (oldState === newState) return;
+    if (oldState === newState || this.isInJumpAnimation()) return;
 
-    const specialState = this.isMjMode && newState === "walk" ? "mj" : null;
+    const newAction = this.getAnimation(newState);
 
-    const newAction = this.animations[specialState || newState];
-
-    const loopMode = ["jump"].includes(this.currentState)
-      ? LoopOnce
-      : LoopRepeat;
-
-    this.currentAnimationAction.fadeOut(0.2);
-    this.currentAnimationAction = newAction
-      .reset()
-      .fadeIn(0.2)
-      .setLoop(loopMode)
-      .play();
+    this.currentAnimationAction.fadeOut(0.1);
+    this.currentAnimationAction = newAction.reset().fadeIn(0.1).play();
   }
 
   playerCollisions() {
@@ -222,12 +236,12 @@ export class CharacterController {
       }
     }
 
-    if (space || this.isInJump()) {
+    if (space && this.canJump) {
       newState = "jump";
+    }
 
-      if (this.isPlayerOnFloor && !this.isInJump()) {
-        this.jumpOnce = true;
-      }
+    if (this.isInJumpAnimation()) {
+      newState = "in_air";
     }
 
     this.currentState = newState;
@@ -238,6 +252,7 @@ export class CharacterController {
     if (!this.model) {
       return;
     }
+
     const speed =
       (this.isPlayerOnFloor ? 1 : 0.5) * this.gravity * this.speedMultiplier;
 
@@ -261,19 +276,16 @@ export class CharacterController {
     }
 
     if (this.isPlayerOnFloor) {
-      if (this.currentState === "jump" && this.jumpOnce) {
+      if (this.isInJumpAnimation() && this.canJump) {
         this.velocity.y = 20;
+        this.canJump = false;
       }
-
-      this.jumpOnce = false;
     }
-
-    this.updateState();
 
     let damping = Math.exp(-15 * deltaTime) - 1;
 
     if (!this.isPlayerOnFloor) {
-      if (this.isInJump()) {
+      if (this.isInJumpAnimation()) {
         this.velocity.y -= this.gravity * 0.7 * deltaTime;
       } else {
         this.velocity.y -= this.gravity * deltaTime;
