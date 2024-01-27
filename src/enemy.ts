@@ -21,6 +21,9 @@ import soundB from "../assets/sounds/audio_2.ogg";
 import soundC from "../assets/sounds/audio_3.ogg";
 import soundD from "../assets/sounds/audio_4.ogg";
 import soundE from "../assets/sounds/audio_5.ogg";
+import soundF from "../assets/sounds/audio_6.ogg";
+import soundG from "../assets/sounds/audio_7.ogg";
+import soundH from "../assets/sounds/audio_8.ogg";
 
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import { Octree } from "three/addons/math/Octree.js";
@@ -172,7 +175,16 @@ class Enemy {
 export class EnemyManager {
   ENEMY_MODELS: Group[] = [];
   readonly ENEMY_NUM_LIMIT = 30;
-  readonly SOUND_PATHS = [soundA, soundB, soundC, soundD, soundE];
+  readonly SOUND_PATHS = [
+    soundA,
+    soundB,
+    soundC,
+    soundD,
+    soundE,
+    soundF,
+    soundG,
+    soundH,
+  ];
 
   enemies: Enemy[] = [];
 
