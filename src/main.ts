@@ -14,8 +14,6 @@ const levels = {
   metro: level2GLB,
 };
 
-const IS_DEBUG = true;
-
 const loader = new GLTFLoader();
 
 const appContainer = document.getElementById("app") as HTMLElement;
@@ -93,8 +91,6 @@ const runNahabaGame = async () => {
 
   scene.add(characterControls.model);
 
-  const stats = IS_DEBUG ? getStats() : null;
-
   startPlaying(characterControls.listener.context);
 
   const animate = () => {
@@ -105,7 +101,6 @@ const runNahabaGame = async () => {
 
     renderer.render(scene, camera);
 
-    stats?.update();
     requestAnimationFrame(animate);
   };
 

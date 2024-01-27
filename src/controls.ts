@@ -361,7 +361,7 @@ export class CharacterController {
   }
 
   private respawnIfOutOfBoundaries() {
-    if (this.collider.start.y < -10) {
+    if (this.collider.start.y < -15) {
       this.moveTo(this.spawnPoint);
     }
   }
@@ -451,13 +451,11 @@ class CharacterControllerInput {
 
     window.addEventListener("keydown", (e) => {
       e.stopPropagation();
-      e.preventDefault();
       this.setKey(e.keyCode, true);
     });
 
     window.addEventListener("keyup", (e) => {
       e.stopPropagation();
-      e.preventDefault();
       this.setKey(e.keyCode, false);
     });
   }

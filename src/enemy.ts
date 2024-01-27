@@ -174,7 +174,7 @@ class Enemy {
 
 export class EnemyManager {
   ENEMY_MODELS: Group[] = [];
-  readonly ENEMY_NUM_LIMIT = 30;
+  readonly ENEMY_NUM_LIMIT = 100;
   readonly SOUND_PATHS = [
     soundA,
     soundB,
@@ -230,7 +230,7 @@ export class EnemyManager {
   }
 
   spawnEnemy() {
-    if (this.enemies.length <= this.ENEMY_NUM_LIMIT) {
+    if (this.enemies.length < this.ENEMY_NUM_LIMIT) {
       const originalModel = this.getRandomModel();
       const randomBuffer =
         this.soundBuffers[
