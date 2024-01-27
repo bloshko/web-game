@@ -17,9 +17,7 @@ const levels = {
 
 const loader = new GLTFLoader();
 
-const appContainer = document.getElementById('app') as HTMLElement;
-
-const getStats = () => {
+const getStats = (appContainer: HTMLElement) => {
     const stats = new Stats();
     stats.domElement.style.position = 'absolute';
     stats.domElement.style.top = '0px';
@@ -30,28 +28,48 @@ const getStats = () => {
 
 const getSearchParams = () => {
     const search = window.location.search;
-
     const params = new URLSearchParams(search);
 
     return params;
 };
 
-const startPlaying = (audioContext: AudioContext) => {
-    document.getElementById('loading-text').style.display = 'none';
-    document.getElementById('play-text').style.display = 'inline';
+const startPlaying = (
+    audioContext: AudioContext,
+    { loadingTextId, playTextId, gameOverlayId }: Omit<Params, 'appContainerId'>
+) => {
+    document.getElementById(loadingTextId).style.display = 'none';
+    document.getElementById(playTextId).style.display = 'inline';
 
-    document.getElementById('play-overlay')?.addEventListener('click', () => {
-        document.getElementById('play-overlay').style.display = 'none';
+    document.getElementById(gameOverlayId)?.addEventListener('click', () => {
+        document.getElementById(gameOverlayId).style.display = 'none';
         audioContext.resume();
     });
 };
 
-const runNahabaGame = async () => {
+const defaultParams: Params = {
+    appContainerId: 'app',
+    loadingTextId: 'loading-text',
+    playTextId: 'play-text',
+    gameOverlayId: 'play-overlay',
+};
+
+type Params = {
+    appContainerId: string;
+    loadingTextId: string;
+    playTextId: string;
+    gameOverlayId: string;
+};
+
+export const runNahabaGame = async (params = defaultParams) => {
+    const { appContainerId, loadingTextId, playTextId, gameOverlayId } = params;
+    const appContainer = document.getElementById(appContainerId) as HTMLElement;
+
     const { orbitControl, scene, camera, renderer, clock } = init();
     const worldOctree = new Octree();
     const helper = new OctreeHelper(worldOctree);
-    const params = getSearchParams();
-    const character = params.get('character') || 'A';
+
+    const searchParams = getSearchParams();
+    const character = searchParams.get('character') || 'A';
 
     const levelGLTF = await loader.loadAsync(levels.metro);
     levelGLTF.scene.traverse((el) => {
@@ -92,7 +110,11 @@ const runNahabaGame = async () => {
 
     scene.add(characterControls.model);
 
-    startPlaying(characterControls.listener.context);
+    startPlaying(characterControls.listener.context, {
+        loadingTextId,
+        playTextId,
+        gameOverlayId,
+    });
 
     const animate = () => {
         const deltaTime = clock.getDelta();
@@ -108,5 +130,3 @@ const runNahabaGame = async () => {
     appContainer.appendChild(renderer.domElement);
     animate();
 };
-
-runNahabaGame();
