@@ -20,8 +20,8 @@ import { Capsule } from 'three/examples/jsm/math/Capsule';
 
 import manGLB from '../assets/characters/man.glb';
 import womanGLB from '../assets/characters/woman.glb';
-import runningSoundMp3 from '../assets/sounds/running_sound.mp3';
-import walkingSoundMp3 from '../assets/sounds/walking_sound.mp3';
+import jumpSoundO from '../assets/sounds/jump_sound_o.mp3';
+import landingSoundMp3 from '../assets/sounds/landing_sound.mp3';
 import { SphericalAttack } from './attack';
 
 type Character = 'A' | 'O';
@@ -33,6 +33,8 @@ type CharacterControllerParams = {
 };
 
 type CharacterState = 'idle' | 'walk' | 'run' | 'jump' | 'in_air';
+
+type SoundNames = 'jump' | 'landing';
 
 export class CharacterController {
     readonly spawnPoint = new Vector3(25, 0, 0);
@@ -71,7 +73,7 @@ export class CharacterController {
 
     characterSound: PositionalAudio;
     audioLoader: AudioLoader;
-    soundBuffers: Record<CharacterState, AudioBuffer> = {};
+    soundBuffers: Record<SoundNames, AudioBuffer> = {};
 
     constructor(params: CharacterControllerParams) {
         this.camera = params.camera;
@@ -90,8 +92,8 @@ export class CharacterController {
         this.input = new CharacterControllerInput();
 
         await this.loadModel();
-        await this.loadSound(runningSoundMp3, 'run');
-        await this.loadSound(walkingSoundMp3, 'walk');
+        await this.loadSound(landingSoundMp3, 'landing');
+        await this.loadSound(jumpSoundO, 'jump');
 
         this.setupCharacterSound();
 
@@ -100,7 +102,7 @@ export class CharacterController {
         this.input.onKeyDown(77, () => this.switchSpecialMode());
     }
 
-    async loadSound(soundPath: string, soundName: CharacterState) {
+    async loadSound(soundPath: string, soundName: SoundNames) {
         const buffer = await this.audioLoader.loadAsync(soundPath);
 
         this.soundBuffers[soundName] = buffer;
@@ -111,13 +113,16 @@ export class CharacterController {
         this.model.add(this.characterSound);
     }
 
-    private playSound(soundName: CharacterState, isLoop = true) {
+    private playSound(soundName: SoundNames, isLoop = true, offset?: number) {
         this.characterSound
             .stop()
             .setBuffer(this.soundBuffers[soundName])
             .setLoop(isLoop)
             .setVolume(0.5);
-        this.characterSound.offset = 0.04;
+
+        if (offset) {
+            this.characterSound.offset = offset;
+        }
 
         this.characterSound.play();
     }
@@ -164,6 +169,9 @@ export class CharacterController {
 
         this.mixer.addEventListener('finished', (e) => {
             if (this.animations.jump === e.action) {
+                if (this.character === 'A') {
+                    this.playSound('landing', false, 0.05);
+                }
                 this.spawnDamageArea();
                 this.canJump = true;
             }
@@ -201,16 +209,6 @@ export class CharacterController {
         if (oldState === newState || this.isInJumpAnimation()) return;
 
         const newAction = this.getAnimation(newState);
-
-        this.characterSound.stop();
-
-        if (newState === 'run') {
-            this.playSound(newState);
-        }
-
-        if (newState === 'walk' && this.character === 'A' && !this.isMjMode) {
-            this.playSound('walk');
-        }
 
         const fadeDuration = 0.3;
         this.currentAnimationAction.fadeOut(fadeDuration);
@@ -340,6 +338,9 @@ export class CharacterController {
 
         if (this.isPlayerOnFloor) {
             if (this.isInJumpAnimation() && this.canJump) {
+                if (this.character === 'O') {
+                    this.playSound('jump', false);
+                }
                 this.velocity.y = 20;
                 this.canJump = false;
             }
