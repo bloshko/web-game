@@ -20,14 +20,21 @@ import { Capsule } from 'three/examples/jsm/math/Capsule';
 
 import enemyAGLB from '../assets/enemies/enemyA.glb';
 import enemyBGLB from '../assets/enemies/enemyB.glb';
-import soundA from '../assets/sounds/audio_1.mp3';
-import soundB from '../assets/sounds/audio_2.mp3';
-import soundC from '../assets/sounds/audio_3.mp3';
-import soundD from '../assets/sounds/audio_4.mp3';
-import soundE from '../assets/sounds/audio_5.mp3';
-import soundF from '../assets/sounds/audio_6.mp3';
-import soundG from '../assets/sounds/audio_7.mp3';
-import soundH from '../assets/sounds/audio_8.mp3';
+import sound1 from '../assets/sounds/audio_1.mp3';
+import sound2 from '../assets/sounds/audio_2.mp3';
+import sound3 from '../assets/sounds/audio_3.mp3';
+import sound6 from '../assets/sounds/audio_6.mp3';
+import sound7 from '../assets/sounds/audio_7.mp3';
+import sound8 from '../assets/sounds/audio_8.mp3';
+import deathSound1 from '../assets/sounds/death_sound_1.mp3';
+import deathSound2 from '../assets/sounds/death_sound_2.mp3';
+import deathSound3 from '../assets/sounds/death_sound_3.mp3';
+import deathSound4 from '../assets/sounds/death_sound_4.mp3';
+import deathSound5 from '../assets/sounds/death_sound_5.mp3';
+import deathSound6 from '../assets/sounds/death_sound_6.mp3';
+import deathSound7 from '../assets/sounds/death_sound_7.mp3';
+import deathSound8 from '../assets/sounds/death_sound_8.mp3';
+import deathSound9 from '../assets/sounds/death_sound_9.mp3';
 import { Attack } from './attack';
 
 type CollisionSide = 'top' | 'bottom' | null;
@@ -52,6 +59,7 @@ class Enemy {
     attackThatKillsCollider: Sphere;
     attackThatKillsColliderRadius = 1;
     sound: Audio;
+    deathSound: Audio;
 
     runningDirection: Vector3;
     speedMultiplier = 10;
@@ -87,6 +95,7 @@ class Enemy {
         this.mixer.timeScale = 2.5;
         this.speedMultiplier = this.getRandomSpeedMultiplier();
         this.sound = params.sound;
+        this.deathSound = params.deathSound;
 
         this.model.traverse((el) => {
             if (el.isMesh) {
@@ -210,6 +219,7 @@ class Enemy {
         if (!this.isDying) {
             this.startDyingAnimation();
             this.sound.stop();
+            this.deathSound.play();
         }
         this.isDying = true;
     }
@@ -266,20 +276,23 @@ type EnemyManagerParams = {
 export class EnemyManager {
     ENEMY_MODELS: Group[] = [];
     readonly ENEMY_NUM_LIMIT = 100;
-    readonly SOUND_PATHS = [
-        soundA,
-        soundB,
-        soundC,
-        soundD,
-        soundE,
-        soundF,
-        soundG,
-        soundH,
+    readonly SOUND_PATHS = [sound1, sound2, sound3, sound6, sound7, sound8];
+    readonly DEATH_SOUND_PATHS = [
+        deathSound1,
+        deathSound2,
+        deathSound3,
+        deathSound4,
+        deathSound5,
+        deathSound6,
+        deathSound7,
+        deathSound8,
+        deathSound9,
     ];
 
     enemies: Enemy[] = [];
 
     soundBuffers = [];
+    deathSoundBuffers = [];
 
     scene: Scene;
     loader: Loader;
@@ -309,6 +322,10 @@ export class EnemyManager {
         for (const soundPath of this.SOUND_PATHS) {
             await this.loadSound(soundPath);
         }
+
+        for (const deathSoundPath of this.DEATH_SOUND_PATHS) {
+            await this.loadDeathSound(deathSoundPath);
+        }
     }
 
     private getRandomArrayElementIndex(arrayLength: number) {
@@ -326,6 +343,12 @@ export class EnemyManager {
         this.soundBuffers.push(buffer);
     }
 
+    async loadDeathSound(path: string) {
+        const buffer = await this.audioLoader.loadAsync(path);
+
+        this.deathSoundBuffers.push(buffer);
+    }
+
     spawnEnemy() {
         if (this.enemies.length < this.ENEMY_NUM_LIMIT) {
             const originalModel = this.getRandomModel();
@@ -336,8 +359,23 @@ export class EnemyManager {
             const sound = new PositionalAudio(this.listener);
             sound.setBuffer(randomBuffer);
             sound.setLoop(true);
-            sound.setRefDistance(0.8);
+            sound.setRefDistance(1);
             sound.setVolume(0.3);
+            sound.setMaxDistance(1);
+            sound.setDistanceModel('exponential');
+
+            const randomDeathSoundBuffer =
+                this.deathSoundBuffers[
+                    this.getRandomArrayElementIndex(
+                        this.deathSoundBuffers.length
+                    )
+                ];
+            const deathSound = new PositionalAudio(this.listener);
+            deathSound.setBuffer(randomDeathSoundBuffer);
+            deathSound.setLoop(false);
+            deathSound.setRefDistance(3);
+            deathSound.setVolume(0.6);
+            deathSound.setDistanceModel('linear');
 
             const params = {
                 scene: this.scene,
@@ -345,6 +383,7 @@ export class EnemyManager {
                 animations: originalModel.animations,
                 worldOctree: this.worldOctree,
                 sound,
+                deathSound,
             };
 
             const newEnemy = new Enemy(params);
