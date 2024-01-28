@@ -82,6 +82,8 @@ export class CharacterController {
 
         await this.loadModel();
 
+        await this.smashAttack.init(this.scene);
+
         this.input.onKeyDown(77, () => this.switchSpecialMode());
     }
 
@@ -96,6 +98,7 @@ export class CharacterController {
                 .setLoop(LoopRepeat)
                 .setDuration(0.8),
         };
+        this.animations.jump.clampWhenFinished = true;
     }
 
     private async loadModel() {
@@ -111,8 +114,6 @@ export class CharacterController {
         });
 
         this.model = gltf.scene;
-
-        this.model.position.add(new Vector3(3, 0, 2));
 
         this.mixer = new AnimationMixer(gltf.scene);
 
@@ -165,8 +166,12 @@ export class CharacterController {
 
         const newAction = this.getAnimation(newState);
 
-        this.currentAnimationAction.fadeOut(0.1);
-        this.currentAnimationAction = newAction.reset().fadeIn(0.1).play();
+        const fadeDuration = 0.3;
+        this.currentAnimationAction.fadeOut(fadeDuration);
+        this.currentAnimationAction = newAction
+            .reset()
+            .fadeIn(fadeDuration)
+            .play();
     }
 
     playerCollisions() {
@@ -395,13 +400,13 @@ export class CharacterController {
     }
 
     update(deltaTime: number) {
-        this.updateState();
+        this.smashAttack.update();
         this.updateCollider(deltaTime);
         this.updatePlayerPosition(deltaTime);
         this.updatePlayerRotation();
         this.updateCameraPosition();
         this.respawnIfOutOfBoundaries();
-        this.smashAttack.update();
+        this.updateState();
     }
 }
 

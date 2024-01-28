@@ -298,14 +298,13 @@ export class EnemyManager {
         this.spawnEnemy();
 
         for (const enemy of this.enemies) {
-            const hasCollisionWithAttack =
-                this.attackThatKills.hasCollisionWithSphere(
-                    enemy.attackThatKillsCollider
-                );
-
-            if (hasCollisionWithAttack) {
-                console.log('HAS COLLISION');
+            if (this.attackThatKills.isAtAttackPoint) {
+                const hasCollisionWithAttack =
+                    this.attackThatKills.hasCollisionWithSphere(
+                        enemy.attackThatKillsCollider
+                    );
             }
+
             enemy.update(deltaTime);
         }
 

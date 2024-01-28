@@ -1,7 +1,20 @@
-import { Sphere, Vector3 } from 'three';
+import {
+    AnimationAction,
+    AnimationMixer,
+    LoopOnce,
+    Object3D,
+    Scene,
+    Sphere,
+    Vector3,
+} from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader';
 import { Timer } from 'three/addons/misc/Timer.js';
 
+import crackGLB from '../assets/attack/crack.glb';
+
 export abstract class Attack {
+    abstract isAtAttackPoint: boolean;
+
     abstract attack(vector: Vector3);
     abstract hasCollisionWithSphere(sphere: Sphere): boolean;
 }
@@ -9,15 +22,15 @@ export abstract class Attack {
 export class SphericalAttack extends Attack {
     collider: Sphere;
     readonly radius = 1;
-    duration = 1;
-
+    duration = 0.5;
     timer: Timer;
     getAwayPoint: Vector3;
     isAtAttackPoint = false;
-
     attackPoint: Vector3 | null;
-
     attackTime: number | null;
+    sprite: Object3D;
+    animation: AnimationAction;
+    mixer: AnimationMixer;
 
     constructor() {
         super();
@@ -26,43 +39,54 @@ export class SphericalAttack extends Attack {
         this.collider = new Sphere(this.getAwayPoint.clone(), this.radius);
     }
 
+    async init(scene: Scene) {
+        const loader = new GLTFLoader();
+        const gltf = await loader.loadAsync(crackGLB);
+        this.setupAnimations(gltf);
+        this.sprite = gltf.scene;
+        const scale = 3;
+        this.sprite.scale.copy(new Vector3(scale, 1, scale));
+
+        scene.add(this.sprite);
+    }
+
+    private setupAnimations(gltf) {
+        this.mixer = new AnimationMixer(gltf.scene);
+        this.animation = this.mixer
+            .clipAction(gltf.animations[0])
+            .setLoop(LoopOnce)
+            .setDuration(this.duration)
+            .play();
+    }
+
+    private moveSpriteToGetAway() {
+        this.sprite.position.copy(this.getAwayPoint.clone());
+    }
+    private moveSpriteToOnGround(vector: Vector3) {
+        this.sprite.position.copy(vector.clone().setY(0));
+    }
+
     private moveCollider(vector: Vector3) {
         this.collider.set(vector.clone(), this.radius);
     }
 
     private stopAttack() {
         this.moveCollider(this.getAwayPoint);
+        this.moveSpriteToGetAway();
         this.isAtAttackPoint = false;
         this.attackTime = null;
-
-        console.log(this.collider);
     }
 
     hasCollisionWithSphere(sphere: Sphere) {
-        // console.log(sphere.center, 'CENTER 1');
-        // console.log(this.collider.center, 'CENTER 2');
         return this.collider.intersectsSphere(sphere);
     }
 
     attack(vector: Vector3) {
-        if (this.isAtAttackPoint) {
-            return;
-        }
+        this.moveSpriteToOnGround(vector);
         this.moveCollider(vector);
         this.isAtAttackPoint = true;
         this.attackTime = this.timer.getElapsed();
-
-        console.log('attack started');
-        console.log(this.attackTime);
-    }
-
-    private moveToGetAwayIfNotThere() {
-        if (
-            !this.isAtAttackPoint &&
-            !this.collider.center.equals(this.getAwayPoint)
-        ) {
-            this.stopAttack();
-        }
+        this.animation.reset().play();
     }
 
     private getTimerDurationDelta() {
@@ -71,7 +95,7 @@ export class SphericalAttack extends Attack {
 
     update() {
         this.timer.update();
-        // this.moveToGetAwayIfNotThere();
+        this.mixer.update(this.timer.getDelta());
 
         if (
             this.isAtAttackPoint &&
@@ -79,8 +103,6 @@ export class SphericalAttack extends Attack {
             this.getTimerDurationDelta() >= this.duration
         ) {
             this.stopAttack();
-
-            console.log('attack stopped');
         }
     }
 }
