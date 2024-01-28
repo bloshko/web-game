@@ -3,10 +3,12 @@ import {
     AnimationClip,
     AnimationMixer,
     AudioListener,
+    AudioLoader,
     Camera,
     Group,
     LoopOnce,
     LoopRepeat,
+    PositionalAudio,
     Quaternion,
     Scene,
     Vector3,
@@ -18,6 +20,8 @@ import { Capsule } from 'three/examples/jsm/math/Capsule';
 
 import manGLB from '../assets/characters/man.glb';
 import womanGLB from '../assets/characters/woman.glb';
+import runningSoundMp3 from '../assets/sounds/running_sound.mp3';
+import walkingSoundMp3 from '../assets/sounds/walking_sound.mp3';
 import { SphericalAttack } from './attack';
 
 type Character = 'A' | 'O';
@@ -65,6 +69,10 @@ export class CharacterController {
     character: Character = 'A';
     listener: AudioListener;
 
+    characterSound: PositionalAudio;
+    audioLoader: AudioLoader;
+    soundBuffers: Record<CharacterState, AudioBuffer> = {};
+
     constructor(params: CharacterControllerParams) {
         this.camera = params.camera;
         this.scene = params.scene;
@@ -73,6 +81,7 @@ export class CharacterController {
         this.character = params.character;
         this.input = new CharacterControllerInput();
         this.smashAttack = new SphericalAttack();
+        this.audioLoader = new AudioLoader();
     }
 
     async init() {
@@ -81,10 +90,36 @@ export class CharacterController {
         this.input = new CharacterControllerInput();
 
         await this.loadModel();
+        await this.loadSound(runningSoundMp3, 'run');
+        await this.loadSound(walkingSoundMp3, 'walk');
+
+        this.setupCharacterSound();
 
         await this.smashAttack.init(this.scene);
 
         this.input.onKeyDown(77, () => this.switchSpecialMode());
+    }
+
+    async loadSound(soundPath: string, soundName: CharacterState) {
+        const buffer = await this.audioLoader.loadAsync(soundPath);
+
+        this.soundBuffers[soundName] = buffer;
+    }
+
+    private setupCharacterSound() {
+        this.characterSound = new PositionalAudio(this.listener);
+        this.model.add(this.characterSound);
+    }
+
+    private playSound(soundName: CharacterState, isLoop = true) {
+        this.characterSound
+            .stop()
+            .setBuffer(this.soundBuffers[soundName])
+            .setLoop(isLoop)
+            .setVolume(0.5);
+        this.characterSound.offset = 0.04;
+
+        this.characterSound.play();
     }
 
     private setupAnimations(gltfAnimations: AnimationClip[]) {
@@ -135,6 +170,7 @@ export class CharacterController {
         });
 
         this.listener = new AudioListener();
+
         this.model.add(this.listener);
     }
 
@@ -165,6 +201,16 @@ export class CharacterController {
         if (oldState === newState || this.isInJumpAnimation()) return;
 
         const newAction = this.getAnimation(newState);
+
+        this.characterSound.stop();
+
+        if (newState === 'run') {
+            this.playSound(newState);
+        }
+
+        if (newState === 'walk' && this.character === 'A' && !this.isMjMode) {
+            this.playSound('walk');
+        }
 
         const fadeDuration = 0.3;
         this.currentAnimationAction.fadeOut(fadeDuration);

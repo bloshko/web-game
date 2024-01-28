@@ -57,7 +57,7 @@ const spawnLights = (scene: Scene) => {
     ];
 
     for (const position of positions) {
-        const color = new Color(0xffffff);
+        const color = new Color('#FFF3BE');
         const pointLight = new PointLight(color, 100);
         pointLight.castShadow = true;
         pointLight.position.copy(position);
