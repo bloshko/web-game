@@ -27,3 +27,28 @@ p {
 #play-text {
     display: none;
 }
+
+.score-container {
+    position: absolute;
+    top: 0;
+    right: 0;
+    padding: 32px;
+
+    font-size: 12px;
+    transition: all 0.5s;
+}
+
+.score-text {
+    transition: all 0.5s;
+    font-size: inherit;
+}
+
+#score-10 {
+    font-size: 32px;
+}
+#score-50 {
+}
+#score-75 {
+}
+#score-100 {
+}

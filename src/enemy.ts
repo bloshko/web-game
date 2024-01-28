@@ -42,6 +42,7 @@ import deathSound13 from '../assets/sounds/death_sound_13.mp3';
 import deathSound14 from '../assets/sounds/death_sound_14.mp3';
 import deathSound15 from '../assets/sounds/death_sound_15.mp3';
 import { Attack } from './attack';
+import { Score } from './score';
 
 type CollisionSide = 'top' | 'bottom' | null;
 
@@ -240,7 +241,7 @@ class Enemy {
     }
 
     getIsResponsiveToAttacks() {
-        return !this.isDead && !this.isDead;
+        return !this.isDead && !this.isDying && !this.isOutOfBoundaries;
     }
 
     private updateModelPosition() {
@@ -322,6 +323,7 @@ export class EnemyManager {
     attackThatKills: Attack;
 
     audioLoader: AudioLoader;
+    score: Score;
 
     constructor(params: EnemyManagerParams) {
         this.scene = params.scene;
@@ -330,6 +332,7 @@ export class EnemyManager {
         this.listener = params.listener;
         this.audioLoader = new AudioLoader();
         this.attackThatKills = params.attackThatKills;
+        this.score = new Score();
     }
 
     async init() {
@@ -447,6 +450,7 @@ export class EnemyManager {
 
                 if (hasCollisionWithAttack) {
                     enemy.startDying();
+                    this.score.addPoint();
                 }
             }
 
