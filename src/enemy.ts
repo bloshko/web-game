@@ -7,6 +7,7 @@ import {
     AudioLoader,
     Group,
     Loader,
+    LoopOnce,
     LoopRepeat,
     PositionalAudio,
     Scene,
@@ -31,17 +32,18 @@ import { Attack } from './attack';
 
 type CollisionSide = 'top' | 'bottom' | null;
 
-type EnemyState = 'idle' | 'running' | 'dying';
+type EnemyState = 'run' | 'death';
 
 class Enemy {
     readonly DISTANCE_TO_START_RUNNING = 3;
     readonly DISTANCE_TO_STOP_RUNNING = 8;
 
-    private state: EnemyState = 'idle';
+    private state: EnemyState = 'run';
 
     model: Group;
     mixer: AnimationMixer;
     animationActions: Record<EnemyState, AnimationAction>;
+    dyingAnimationActions: AnimationAction[];
     animations: AnimationClip[];
     scene: Scene;
     currentAnimationAction: AnimationAction;
@@ -55,6 +57,8 @@ class Enemy {
     speedMultiplier = 10;
 
     isDead = false;
+    isDying = false;
+    isOutOfBoundaries = false;
 
     private getRandomRunningDirection(): Vector3 {
         const randomX = Math.random() * 2 - 1;
@@ -65,6 +69,10 @@ class Enemy {
 
     private getRandomSpeedMultiplier(): number {
         return Math.random() * 10 + 1;
+    }
+
+    private getRandomArrayElementIndex(arrayLength: number) {
+        return Math.floor(Math.random() * arrayLength);
     }
 
     constructor(params) {
@@ -87,10 +95,13 @@ class Enemy {
         });
 
         this.animationActions = {
-            idle: this.mixer.clipAction(this.animations[0]),
-            running: this.mixer.clipAction(this.animations[0]),
-            dying: this.mixer.clipAction(this.animations[0]),
+            run: this.mixer.clipAction(this.animations[2]),
         };
+
+        this.dyingAnimationActions = [
+            this.mixer.clipAction(this.animations[0]),
+            this.mixer.clipAction(this.animations[1]),
+        ];
 
         this.currentAnimationAction = this.animationActions[this.state]
             .setLoop(LoopRepeat)
@@ -159,6 +170,11 @@ class Enemy {
     }
 
     update(deltaTime: number): void {
+        if (this.isDying) {
+            this.mixer.update(deltaTime);
+            return;
+        }
+
         this.collider.translate(
             this.runningDirection
                 .clone()
@@ -166,10 +182,40 @@ class Enemy {
         );
 
         this.playerCollisions();
-
         this.mixer.update(deltaTime);
         this.updateModelPosition();
         this.updateAttackThatKillsColliderPosition();
+        this.updateIsOutOfBoundaries();
+    }
+
+    private startDyingAnimation() {
+        const animation =
+            this.dyingAnimationActions[
+                this.getRandomArrayElementIndex(
+                    this.dyingAnimationActions.length
+                )
+            ];
+
+        this.currentAnimationAction.fadeOut(0);
+        this.mixer.timeScale = 1;
+        this.currentAnimationAction = animation
+            .reset()
+            .setLoop(LoopOnce)
+            .play();
+
+        animation.clampWhenFinished = true;
+    }
+
+    startDying() {
+        if (!this.isDying) {
+            this.startDyingAnimation();
+            this.sound.stop();
+        }
+        this.isDying = true;
+    }
+
+    getIsResponsiveToAttacks() {
+        return !this.isDead && !this.isDead;
     }
 
     private updateModelPosition() {
@@ -188,6 +234,24 @@ class Enemy {
             this.model.position,
             this.attackThatKillsColliderRadius
         );
+    }
+
+    private updateIsOutOfBoundaries() {
+        const x = this.model.position.x;
+        const z = this.model.position.z;
+
+        const xBoundaries = 30;
+        const zBoundaries = 30;
+
+        const isOutOfBoundaries =
+            x > xBoundaries ||
+            x < -xBoundaries ||
+            z > zBoundaries ||
+            z < -zBoundaries;
+
+        if (isOutOfBoundaries) {
+            this.isOutOfBoundaries = true;
+        }
     }
 }
 
@@ -272,8 +336,8 @@ export class EnemyManager {
             const sound = new PositionalAudio(this.listener);
             sound.setBuffer(randomBuffer);
             sound.setLoop(true);
-            sound.setRefDistance(0.5);
-            sound.setVolume(0.6);
+            sound.setRefDistance(0.8);
+            sound.setVolume(0.3);
 
             const params = {
                 scene: this.scene,
@@ -298,11 +362,18 @@ export class EnemyManager {
         this.spawnEnemy();
 
         for (const enemy of this.enemies) {
-            if (this.attackThatKills.isAtAttackPoint) {
+            if (
+                this.attackThatKills.isAtAttackPoint &&
+                enemy.getIsResponsiveToAttacks()
+            ) {
                 const hasCollisionWithAttack =
                     this.attackThatKills.hasCollisionWithSphere(
                         enemy.attackThatKillsCollider
                     );
+
+                if (hasCollisionWithAttack) {
+                    enemy.startDying();
+                }
             }
 
             enemy.update(deltaTime);
