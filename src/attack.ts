@@ -21,7 +21,7 @@ export abstract class Attack {
 
 export class SphericalAttack extends Attack {
     collider: Sphere;
-    readonly radius = 1;
+    readonly radius = 2;
     duration = 0.3;
     timer: Timer;
     getAwayPoint: Vector3;
@@ -44,7 +44,7 @@ export class SphericalAttack extends Attack {
         const gltf = await loader.loadAsync(crackGLB);
         this.setupAnimations(gltf);
         this.sprite = gltf.scene;
-        const scale = 2;
+        const scale = 3;
         this.sprite.scale.copy(new Vector3(scale, 1, scale));
         this.sprite.position.copy(this.getAwayPoint.clone());
 

@@ -128,10 +128,19 @@ class Enemy {
             this.model.position,
             this.attackThatKillsColliderRadius
         );
+        this.mixer.addEventListener('finished', (e) => {
+            if (e.action._clip.name.includes('death')) {
+                this.isDead = true;
+            }
+        });
     }
 
     init(): void {
         this.spawnAtRandomPosition();
+    }
+
+    despawn() {
+        this.scene.remove(this.model);
     }
 
     playerCollisions() {
@@ -281,7 +290,7 @@ type EnemyManagerParams = {
 
 export class EnemyManager {
     ENEMY_MODELS: Group[] = [];
-    readonly ENEMY_NUM_LIMIT = 100;
+    readonly ENEMY_NUM_LIMIT = 30;
     readonly SOUND_PATHS = [sound1, sound2, sound3, sound6, sound7, sound8];
     readonly DEATH_SOUND_PATHS = [
         deathSound1,
@@ -409,6 +418,20 @@ export class EnemyManager {
 
     despawnEnemy() {}
 
+    cleanupEnemies() {
+        const enemiesNumber = this.enemies.length;
+        if (enemiesNumber === 0) {
+            return;
+        }
+        for (let i = enemiesNumber - 1; i >= 0; i--) {
+            const enemy = this.enemies[i];
+            if (enemy.isDead || enemy.isOutOfBoundaries) {
+                enemy.despawn();
+                this.enemies.splice(i, 1);
+            }
+        }
+    }
+
     update(deltaTime: number) {
         this.spawnEnemy();
 
@@ -430,7 +453,6 @@ export class EnemyManager {
             enemy.update(deltaTime);
         }
 
-        // const deadEnemies = this.enemies.filter((enemy) => enemy.isDead);
-        this.despawnEnemy();
+        this.cleanupEnemies();
     }
 }
