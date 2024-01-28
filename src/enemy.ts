@@ -35,6 +35,8 @@ import deathSound6 from '../assets/sounds/death_sound_6.mp3';
 import deathSound7 from '../assets/sounds/death_sound_7.mp3';
 import deathSound8 from '../assets/sounds/death_sound_8.mp3';
 import deathSound9 from '../assets/sounds/death_sound_9.mp3';
+import deathSound10 from '../assets/sounds/death_sound_10.mp3';
+import deathSound11 from '../assets/sounds/death_sound_11.mp3';
 import { Attack } from './attack';
 
 type CollisionSide = 'top' | 'bottom' | null;
@@ -287,6 +289,8 @@ export class EnemyManager {
         deathSound7,
         deathSound8,
         deathSound9,
+        deathSound10,
+        deathSound11,
     ];
 
     enemies: Enemy[] = [];
