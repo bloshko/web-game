@@ -39,7 +39,6 @@ import deathSound10 from '../assets/sounds/death_sound_10.mp3';
 import deathSound11 from '../assets/sounds/death_sound_11.mp3';
 import deathSound12 from '../assets/sounds/death_sound_12.mp3';
 import deathSound13 from '../assets/sounds/death_sound_13.mp3';
-import deathSound14 from '../assets/sounds/death_sound_14.mp3';
 import deathSound15 from '../assets/sounds/death_sound_15.mp3';
 import { Attack } from './attack';
 import { Score } from './score';
@@ -307,7 +306,6 @@ export class EnemyManager {
         deathSound11,
         deathSound12,
         deathSound13,
-        deathSound14,
         deathSound15,
     ];
 
