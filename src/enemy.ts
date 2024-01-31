@@ -383,8 +383,7 @@ export class EnemyManager {
                 .setBuffer(randomBuffer)
                 .setLoop(true)
                 .setRefDistance(0.5)
-                .setVolume(0.3)
-                .setMaxDistance(1);
+                .setVolume(0.45);
 
             const randomDeathSoundBuffer =
                 this.deathSoundBuffers[

@@ -498,16 +498,20 @@ class CharacterControllerInput {
     }
 
     initMobileListeners() {
-        this.mobileElements.jumpButton.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            this.keys.space = true;
-        });
-        this.mobileElements.jumpButton.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            this.keys.space = false;
-        });
+        ['touchstart', 'touchmove'].forEach((event) =>
+            this.mobileElements.jumpButton.addEventListener(event, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.keys.space = true;
+            })
+        );
+        ['touchend', 'touchcancel'].forEach((event) =>
+            this.mobileElements.jumpButton.addEventListener(event, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.keys.space = false;
+            })
+        );
 
         this.joy = nipple.create({
             zone: this.mobileElements.joystick,
