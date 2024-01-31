@@ -3,7 +3,9 @@
 }
 
 body {
+    user-select: none;
     background-color: white;
+    position: relative;
 }
 
 #play-overlay {
@@ -46,9 +48,43 @@ p {
 #score-10 {
     font-size: 32px;
 }
-#score-50 {
+
+#joystick {
+    position: relative;
+    left: 10px;
+    bottom: 10px;
+    transform: translateY(-140px);
+    width: 140px;
+    height: 140px;
+    z-index: 10;
 }
-#score-75 {
+.not-selectable {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    -o-user-select: none;
+    user-select: none;
+    touch-action: none;
+    pointer-events: auto;
 }
-#score-100 {
+
+#jump-button {
+    display: grid;
+    place-items: center;
+    position: fixed;
+    bottom: 10px;
+    right: 10px;
+    height: 140px;
+    width: 140px;
+    border-radius: 50%;
+    z-index: 10;
+}
+#jump-button > div {
+    width: 80px;
+    height: 80px;
+    background: rgba(255, 255, 255, 0.2);
+    border: 2px solid #fff;
+    border-radius: 50%;
 }

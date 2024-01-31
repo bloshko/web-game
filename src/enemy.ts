@@ -266,7 +266,7 @@ class Enemy {
         const z = this.model.position.z;
 
         const xBoundaries = 30;
-        const zBoundaries = 30;
+        const zBoundaries = 20;
 
         const isOutOfBoundaries =
             x > xBoundaries ||
@@ -374,17 +374,17 @@ export class EnemyManager {
     spawnEnemy() {
         if (this.enemies.length < this.ENEMY_NUM_LIMIT) {
             const originalModel = this.getRandomModel();
+
             const randomBuffer =
                 this.soundBuffers[
                     this.getRandomArrayElementIndex(this.soundBuffers.length)
                 ];
-            const sound = new PositionalAudio(this.listener);
-            sound.setBuffer(randomBuffer);
-            sound.setLoop(true);
-            sound.setRefDistance(1);
-            sound.setVolume(0.3);
-            sound.setMaxDistance(1);
-            sound.setDistanceModel('exponential');
+            const sound = new PositionalAudio(this.listener)
+                .setBuffer(randomBuffer)
+                .setLoop(true)
+                .setRefDistance(0.5)
+                .setVolume(0.3)
+                .setMaxDistance(1);
 
             const randomDeathSoundBuffer =
                 this.deathSoundBuffers[
@@ -392,12 +392,12 @@ export class EnemyManager {
                         this.deathSoundBuffers.length
                     )
                 ];
-            const deathSound = new PositionalAudio(this.listener);
-            deathSound.setBuffer(randomDeathSoundBuffer);
-            deathSound.setLoop(false);
-            deathSound.setRefDistance(3);
-            deathSound.setVolume(0.6);
-            deathSound.setDistanceModel('linear');
+            const deathSound = new PositionalAudio(this.listener)
+                .setBuffer(randomDeathSoundBuffer)
+                .setLoop(false)
+                .setRefDistance(3)
+                .setVolume(0.6)
+                .setDistanceModel('linear');
 
             const params = {
                 scene: this.scene,

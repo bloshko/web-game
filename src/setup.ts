@@ -86,7 +86,7 @@ export const init = (isDebug?: boolean) => {
     renderer.shadowMap.enabled = true;
 
     const orbitControl = new OrbitControls(camera, renderer.domElement);
-    orbitControl.minDistance = 3;
+    orbitControl.minDistance = 8;
     orbitControl.maxDistance = 15;
     orbitControl.enablePan = false;
     orbitControl.maxPolarAngle = Math.PI / 2 - 0.05;

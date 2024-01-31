@@ -43,6 +43,7 @@ export class Score {
     createScoreEl() {
         this.scoreElContainer = document.createElement('dir');
         this.scoreElContainer.classList.add('score-container');
+        this.scoreElContainer.classList.add('non-selectable');
         this.scoreElContainer.style.fontSize = `${this.points}px`;
 
         this.scoreElText = document.createElement('p');

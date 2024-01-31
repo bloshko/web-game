@@ -37,12 +37,14 @@ const startPlaying = (
     audioContext: AudioContext,
     { loadingTextId, playTextId, gameOverlayId }: Omit<Params, 'appContainerId'>
 ) => {
+    audioContext.suspend();
     document.getElementById(loadingTextId).style.display = 'none';
     document.getElementById(playTextId).style.display = 'inline';
 
     document.getElementById(gameOverlayId)?.addEventListener('click', () => {
         document.getElementById(gameOverlayId).style.display = 'none';
         audioContext.resume();
+        document.documentElement?.requestFullscreen();
     });
 };
 

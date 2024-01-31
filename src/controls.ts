@@ -1,14 +1,15 @@
+import nipple from 'nipplejs';
 import {
     AnimationAction,
     AnimationClip,
     AnimationMixer,
+    Audio,
     AudioListener,
     AudioLoader,
     Camera,
     Group,
     LoopOnce,
     LoopRepeat,
-    PositionalAudio,
     Quaternion,
     Scene,
     Vector3,
@@ -71,7 +72,7 @@ export class CharacterController {
     character: Character = 'A';
     listener: AudioListener;
 
-    characterSound: PositionalAudio;
+    characterSound: Audio;
     audioLoader: AudioLoader;
     soundBuffers: Record<SoundNames, AudioBuffer> = {};
 
@@ -81,7 +82,6 @@ export class CharacterController {
         this.worldOctree = params.worldOctree;
         this.orbitControl = params.orbitControl;
         this.character = params.character;
-        this.input = new CharacterControllerInput();
         this.smashAttack = new SphericalAttack();
         this.audioLoader = new AudioLoader();
     }
@@ -109,7 +109,7 @@ export class CharacterController {
     }
 
     private setupCharacterSound() {
-        this.characterSound = new PositionalAudio(this.listener);
+        this.characterSound = new Audio(this.listener);
         this.model.add(this.characterSound);
     }
 
@@ -118,7 +118,7 @@ export class CharacterController {
             .stop()
             .setBuffer(this.soundBuffers[soundName])
             .setLoop(isLoop)
-            .setVolume(0.5);
+            .setVolume(0.7);
 
         if (offset) {
             this.characterSound.offset = offset;
@@ -460,13 +460,96 @@ export class CharacterController {
 type Key = 'forward' | 'backward' | 'left' | 'right' | 'space' | 'shift';
 
 type Keys = Record<Key, boolean>;
-
+type MobileElements = 'joystick' | 'jumpButton';
 class CharacterControllerInput {
     keys: Keys;
     keyListeners: Record<number, () => void> = {};
+    isMobile = false;
+    joy: nipple.JoystickManager;
+
+    mobileElements: Record<MobileElements, HTMLElement>;
 
     constructor() {
         this.init();
+    }
+
+    addMobileControllsToDOM() {
+        this.isMobile = true;
+        const joystick = document.createElement('div');
+        const jumpButton = document.createElement('div');
+
+        joystick.id = 'joystick';
+        jumpButton.id = 'jump-button';
+
+        joystick.classList.add('not-selectable');
+        jumpButton.classList.add('not-selectable');
+
+        jumpButton.appendChild(document.createElement('div'));
+
+        document.body.appendChild(joystick);
+        document.body.appendChild(jumpButton);
+
+        this.mobileElements = {
+            joystick,
+            jumpButton,
+        };
+
+        this.initMobileListeners();
+    }
+
+    initMobileListeners() {
+        this.mobileElements.jumpButton.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            this.keys.space = true;
+        });
+        this.mobileElements.jumpButton.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            this.keys.space = false;
+        });
+
+        this.joy = nipple.create({
+            zone: this.mobileElements.joystick,
+            mode: 'static',
+            position: { left: '50%', top: '50%' },
+            dynamicPage: true,
+        });
+
+        this.joy.on('move', (_, e) => {
+            console.log(e);
+            if ('angle' in e && 'direction' in e) {
+                this.onJoystickMove(e.direction, e.distance);
+            }
+        });
+        this.joy.on('end', () => this.resetDirectionKeys());
+    }
+
+    resetDirectionKeys() {
+        this.keys.forward = false;
+        this.keys.backward = false;
+        this.keys.left = false;
+        this.keys.right = false;
+        this.keys.shift = false;
+    }
+
+    onJoystickMove({ angle }: nipple.Direction, distance: number) {
+        this.resetDirectionKeys();
+        if (angle === 'up') {
+            this.keys.forward = true;
+        } else if (angle === 'down') {
+            this.keys.backward = true;
+        }
+
+        if (angle === 'right') {
+            this.keys.right = true;
+        } else if (angle === 'left') {
+            this.keys.left = true;
+        }
+
+        if (distance > 40) {
+            this.keys.shift = true;
+        }
     }
 
     private setKey(keyCode: number, value: boolean) {
@@ -517,6 +600,10 @@ class CharacterControllerInput {
     }
 
     private init() {
+        if ('ontouchstart' in window) {
+            this.addMobileControllsToDOM();
+        }
+
         this.keys = {
             forward: false,
             backward: false,
@@ -528,11 +615,13 @@ class CharacterControllerInput {
 
         window.addEventListener('keydown', (e) => {
             e.stopPropagation();
+
             this.setKey(e.keyCode, true);
         });
 
         window.addEventListener('keyup', (e) => {
             e.stopPropagation();
+
             this.setKey(e.keyCode, false);
         });
     }
