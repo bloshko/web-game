@@ -366,8 +366,11 @@ export class CharacterController {
         this.playerCollisions();
 
         this.camera.position.sub(this.orbitControl.target);
-        this.orbitControl.target.copy(this.collider.end);
-        this.camera.position.add(this.collider.end);
+        const yCameraReset = 0.5;
+        this.orbitControl.target.copy(
+            this.collider.end.clone().setY(yCameraReset)
+        );
+        this.camera.position.add(this.collider.end.clone().setY(yCameraReset));
 
         this.camera.updateMatrixWorld();
     }
