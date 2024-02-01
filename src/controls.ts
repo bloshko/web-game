@@ -366,7 +366,7 @@ export class CharacterController {
         this.playerCollisions();
 
         this.camera.position.sub(this.orbitControl.target);
-        const yCameraReset = 0.5;
+        const yCameraReset = 2;
         this.orbitControl.target.copy(
             this.collider.end.clone().setY(yCameraReset)
         );
