@@ -447,6 +447,7 @@ export class CharacterController {
 
     private spawn() {
         this.moveTo(this.spawnPoint);
+        this.model.rotateOnAxis(new Vector3(0, 1, 0), 30);
     }
 
     update(deltaTime: number) {

@@ -91,7 +91,7 @@ export const init = (isDebug?: boolean) => {
     orbitControl.enablePan = false;
     orbitControl.maxPolarAngle = Math.PI / 2 - 0.05;
     orbitControl.autoRotate = false;
-    orbitControl.target = new Vector3(0, 1, 0);
+    orbitControl.target = new Vector3(-1, 1, 0);
     orbitControl.update();
 
     scene.add(camera);
