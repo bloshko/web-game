@@ -372,7 +372,7 @@ export class CharacterController {
         );
         this.camera.position.add(this.collider.end.clone().setY(yCameraReset));
 
-        this.camera.updateMatrixWorld();
+        // this.camera.updateMatrixWorld();
     }
 
     private updatePlayerPosition(deltaTime: number) {
